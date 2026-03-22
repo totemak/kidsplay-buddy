@@ -1,0 +1,44 @@
+⚠️  CRITICAL INFORMATION - READ FIRST ⚠️
+
+================================================
+CURRENT PASSWORD: family2025
+================================================
+
+THIS IS THE DEFAULT PASSWORD - CHANGE IT IMMEDIATELY!
+
+To change:
+1. Open App.jsx
+2. Go to line ~711 (search for "family2025")
+3. Replace "family2025" with your own password
+4. Save, commit, and push to GitHub
+
+================================================
+REQUIRED: ANTHROPIC API KEY
+================================================
+
+You MUST add your API key to Vercel:
+
+1. Get API key: https://console.anthropic.com/
+2. In Vercel dashboard → Settings → Environment Variables
+3. Add: ANTHROPIC_API_KEY = your-key-here
+
+Without this, the app will not work!
+
+================================================
+COSTS
+================================================
+
+Expected monthly cost for 5 users: $3-5
+
+Set a budget limit:
+https://console.anthropic.com/settings/limits
+
+================================================
+NEXT STEPS
+================================================
+
+1. Read QUICKSTART.md (5 min setup)
+2. Follow CHECKLIST.md (step by step)
+3. Read README.md (full documentation)
+
+================================================
