@@ -1,5 +1,80 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Sparkles, MapPin, CheckCircle, MessageCircle, Baby, Plus, Trash2, Bookmark, X, Heart, Activity, Home, Trees, Palette, Compass, ChevronDown, ChevronUp, Navigation, Loader2, Users, Brain, DollarSign, Microscope } from "lucide-react";
+import { Sparkles, MapPin, CheckCircle, MessageCircle, Baby, Plus, Trash2, Bookmark, X, Heart, Activity, Home, Trees, Palette, Compass, ChevronDown, ChevronUp, Navigation, Loader2, Users, Brain, DollarSign, Microscope, Lock } from "lucide-react";
+
+// ── Password Gate ──────────────────────────────────────────────
+// 🔑 Change this to your desired password
+const APP_PASSWORD = "PlayfulKids!1122";
+
+function PasswordGate({ onUnlock }) {
+  const [value, setValue] = useState("");
+  const [error, setError] = useState(false);
+  const [shake, setShake] = useState(false);
+
+  const attempt = () => {
+    if (value === APP_PASSWORD) {
+      sessionStorage.setItem("kidsplay_auth", "1");
+      onUnlock();
+    } else {
+      setError(true);
+      setShake(true);
+      setValue("");
+      setTimeout(() => setShake(false), 500);
+    }
+  };
+
+  return (
+    <div style={{ display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", minHeight:"100vh", background:C.bgSoft, fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif", padding:24 }}>
+      <div style={{ width:"100%", maxWidth:380 }}>
+        {/* Logo */}
+        <div style={{ textAlign:"center", marginBottom:40 }}>
+          <div style={{ width:72, height:72, background:C.primary, borderRadius:22, display:"flex", alignItems:"center", justifyContent:"center", boxShadow:`0 12px 32px ${C.primary}40`, margin:"0 auto 16px" }}>
+            <Sparkles size={36} fill="#fff" style={{ color:"#fff" }} />
+          </div>
+          <div style={{ fontWeight:900, fontSize:28, color:C.primary, letterSpacing:"-0.5px" }}>Kindred</div>
+          <div style={{ fontSize:12, fontWeight:700, color:C.inkSoft, textTransform:"uppercase", letterSpacing:"0.1em", marginTop:4 }}>Family Activity Companion</div>
+        </div>
+
+        {/* Card */}
+        <div style={{ background:C.white, borderRadius:32, padding:32, boxShadow:"0 20px 60px rgba(26,26,46,0.10)", border:`2px solid ${C.primaryFg}`, animation: shake ? "shake 0.4s ease" : "none" }}>
+          <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:6 }}>
+            <Lock size={18} style={{ color:C.primary }} />
+            <span style={{ fontWeight:800, fontSize:16, color:C.ink }}>Enter Access Code</span>
+          </div>
+          <p style={{ fontSize:13, color:C.inkSoft, fontWeight:500, marginBottom:20, marginTop:0 }}>
+            This app is for invited users only.
+          </p>
+          <input
+            type="password"
+            placeholder="Password"
+            value={value}
+            onChange={e => { setValue(e.target.value); setError(false); }}
+            onKeyDown={e => e.key === "Enter" && attempt()}
+            autoFocus
+            style={{ ...inputSt, border: error ? `2px solid ${C.red}` : `2px solid ${C.primaryFg}`, marginBottom: error ? 6 : 16 }}
+          />
+          {error && (
+            <p style={{ color:C.red, fontSize:12, fontWeight:700, marginBottom:14, marginTop:0 }}>
+              Incorrect password. Please try again.
+            </p>
+          )}
+          <button onClick={attempt} disabled={!value} style={{ width:"100%", padding:"14px 24px", background: value ? C.primary : C.inkFaint, color:C.white, borderRadius:20, fontWeight:800, fontSize:15, border:"none", cursor: value ? "pointer" : "not-allowed", display:"flex", alignItems:"center", justifyContent:"center", gap:10, boxShadow: value ? `0 8px 24px ${C.primary}40` : "none", transition:"all .15s", opacity: value ? 1 : 0.5 }}>
+            <Sparkles size={18} fill="currentColor" /> Unlock App
+          </button>
+        </div>
+      </div>
+
+      <style>{`
+        @keyframes shake {
+          0%, 100% { transform: translateX(0); }
+          20%       { transform: translateX(-8px); }
+          40%       { transform: translateX(8px); }
+          60%       { transform: translateX(-6px); }
+          80%       { transform: translateX(6px); }
+        }
+      `}</style>
+    </div>
+  );
+}
 
 // ── Design tokens ──────────────────────────────────────────────
 const C = {
@@ -733,6 +808,11 @@ function CommunitySection({ state, update }) {
 export default function App() {
   const [state, update] = useAppState();
   const [section, setSection] = useState(0);
+  const [unlocked, setUnlocked] = useState(
+    () => sessionStorage.getItem("kidsplay_auth") === "1"
+  );
+
+  if (!unlocked) return <PasswordGate onUnlock={() => setUnlocked(true)} />;
 
   if (!state) return (
     <div style={{ display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", height:"100vh", background:C.bgSoft, gap:16 }}>
