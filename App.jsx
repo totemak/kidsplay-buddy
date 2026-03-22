@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Sparkles, MapPin, BookOpen, CheckCircle, MessageCircle, Baby, Plus, Trash2, Bookmark, X, Heart, Activity, Home, Trees, Palette, Compass, ChevronDown, ChevronUp, Navigation, Loader2, Users, Lock } from "lucide-react";
+import { Sparkles, MapPin, CheckCircle, MessageCircle, Baby, Plus, Trash2, Bookmark, X, Heart, Activity, Home, Trees, Palette, Compass, ChevronDown, ChevronUp, Navigation, Loader2, Users, Brain, DollarSign, Microscope } from "lucide-react";
 
+// ── Design tokens ──────────────────────────────────────────────
 const C = {
   bgSoft:"#F5F3FF", white:"#FFFFFF", ink:"#1A1A2E",
   inkMid:"rgba(26,26,46,0.6)", inkSoft:"rgba(26,26,46,0.4)", inkFaint:"rgba(26,26,46,0.1)",
@@ -11,24 +12,32 @@ const C = {
   red:"#EF4444", redFg:"#FEF2F2",
 };
 
-const LANGUAGES   = ["English","Spanish","French","Portuguese","German","Italian","Dutch","Polish","Czech"];
-const PLAY_CATS   = [
+const LANGUAGES = ["English","Spanish","French","Portuguese","German","Italian","Dutch","Polish","Czech"];
+
+const PLAY_CATS = [
   { type:"Indoor",     icon:Home,    label:"Indoor/Home", color:"#6C47FF" },
   { type:"Outdoor",    icon:Trees,   label:"Outdoor",     color:"#22C55E" },
   { type:"Creative",   icon:Palette, label:"Creative",    color:"#F27D26" },
   { type:"Trip-based", icon:Compass, label:"Trips",       color:"#F59E0B" },
 ];
-const LEARN_TOPICS  = ["Science","History","Nature","Math","Art","Geography","Biology"];
-const GENDERS       = ["Boy","Girl","Non-binary","Prefer not to say"];
+
+const LEARN_FOCUSES = [
+  { id:"how-to-learn",     icon:Brain,         label:"How to Learn",      emoji:"🧠", subtitle:"Metacognition & Learning Skills", color:"#6C47FF" },
+  { id:"soft-skills",      icon:MessageCircle, label:"Soft Skills",        emoji:"💬", subtitle:"Life Competencies",              color:"#F27D26" },
+  { id:"financial",        icon:DollarSign,    label:"Financial Literacy", emoji:"💰", subtitle:"Money & Market Basics",          color:"#22C55E" },
+  { id:"interdisciplinary",icon:Microscope,    label:"Interdisciplinary",  emoji:"🔬", subtitle:"Subject Blending",               color:"#F59E0B" },
+];
+
+const GENDERS         = ["Boy","Girl","Non-binary","Prefer not to say"];
 const DISCARD_REASONS = ["Not age-appropriate","Already done it","Too complex","Missing materials","Other"];
 const DIFFICULTY_OPTS = ["Way too easy","Easy","Just right","Difficult","Very difficult"];
-const AGE_GROUPS    = a => a<=2?"toddler":a<=5?"preschool":a<=10?"primary":"tween";
+const AGE_GROUPS      = a => a<=2?"toddler":a<=5?"preschool":a<=10?"primary":"tween";
+
 const NAV = [
-  { id:"play",      Icon:Sparkles,     label:"Freeplay"  },
-  { id:"map",       Icon:MapPin,       label:"Nearby"    },
-  { id:"learn",     Icon:BookOpen,     label:"Learning"  },
-  { id:"done",      Icon:CheckCircle,  label:"History"   },
-  { id:"community", Icon:MessageCircle,label:"Community" },
+  { id:"activities", Icon:Sparkles,      label:"Activities" },
+  { id:"map",        Icon:MapPin,        label:"Nearby"     },
+  { id:"done",       Icon:CheckCircle,   label:"History"    },
+  { id:"community",  Icon:MessageCircle, label:"Community"  },
 ];
 
 const INSPIRATION = {
@@ -38,36 +47,37 @@ const INSPIRATION = {
   "Trip-based":`Inspire from these real ideas (don't copy verbatim): Scavenger Hunt Sleuth (spot things in a new environment), Travel Detective (make up a mystery about the place), Nature journal journey (draw plants and landmarks), Map makers (sketch a hand-drawn map as you explore), Photo safari (list of creative shots to find), Story walk (each person adds a sentence at each new location), Junior journalist (interview locals about the place), Sensory walk (record things you see, hear, smell, touch), Postcard making on the go, Taste the world at a local market.`,
 };
 
-// ── Storage & API ──────────────────────────────────────────────
-const defaultState = { lang:"English", kids:[], savedIdeas:[], completedActivities:[], communityFeedback:[], communityIdeas:[], feedbackLoop:{} };
+// ── Storage — uses localStorage (Vercel deployment) ───────────
+const defaultState = {
+  lang:"English", kids:[], savedIdeas:[], completedActivities:[],
+  communityFeedback:[], communityIdeas:[], feedbackLoop:{},
+  intent:"play", learnFocuses:[], envFilter:[],
+};
 async function loadState() {
-  try { 
-    const data = localStorage.getItem("kidsplay_v3");
-    return data ? JSON.parse(data) : defaultState; 
-  } catch { 
-    return defaultState; 
-  }
+  try { const d = localStorage.getItem("kidsplay_v4"); return d ? JSON.parse(d) : defaultState; }
+  catch { return defaultState; }
 }
-async function saveState(s) { 
-  try { 
-    localStorage.setItem("kidsplay_v3", JSON.stringify(s)); 
-  } catch {} 
+async function saveState(s) {
+  try { localStorage.setItem("kidsplay_v4", JSON.stringify(s)); } catch {}
 }
+
+// ── API — calls /api/claude backend proxy (Vercel) ─────────────
 async function callClaude(prompt, lang="English") {
   const res = await fetch("/api/claude", {
-    method:"POST", 
+    method:"POST",
     headers:{"Content-Type":"application/json"},
-    body: JSON.stringify({ 
-      model:"claude-sonnet-4-20250514", 
+    body: JSON.stringify({
+      model:"claude-sonnet-4-20250514",
       max_tokens:1200,
       system:`You are a helpful assistant for parents. Respond ONLY in valid JSON, no markdown, no explanation. ALL text values MUST be in ${lang}. The "materials" field must always be a JSON array of strings, never a plain string.`,
-      messages:[{role:"user",content:prompt}] 
+      messages:[{role:"user", content:prompt}],
     }),
   });
   const d = await res.json();
   const text = d.content?.map(i=>i.text||"").join("")||"[]";
   try { return JSON.parse(text.replace(/```json|```/g,"").trim()); } catch { return null; }
 }
+
 function useAppState() {
   const [state, setState] = useState(null);
   useEffect(()=>{ loadState().then(setState); },[]);
@@ -93,9 +103,7 @@ function AccentBar({ color }) {
 function MovementDots({ level }) {
   return (
     <div style={{ display:"flex", gap:3, alignItems:"center" }}>
-      {[1,2,3,4].map(i=>(
-        <Activity key={i} size={14} style={{ color:i<=level?C.accent:C.inkFaint, fill:i<=level?C.accent:"none" }} />
-      ))}
+      {[1,2,3,4].map(i=><Activity key={i} size={14} style={{ color:i<=level?C.accent:C.inkFaint, fill:i<=level?C.accent:"none" }} />)}
     </div>
   );
 }
@@ -126,9 +134,7 @@ function Modal({ show, onClose, title, accentColor, children }) {
         <div style={{ position:"absolute", top:0, left:0, width:"100%", height:4, background:accentColor||C.primary }} />
         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:28 }}>
           <h3 style={{ fontWeight:900, fontSize:28, color:C.ink, margin:0 }}>{title}</h3>
-          <button onClick={onClose} style={{ background:C.bgSoft, border:"none", borderRadius:12, padding:8, cursor:"pointer" }}>
-            <X size={22} style={{ color:C.inkSoft }} />
-          </button>
+          <button onClick={onClose} style={{ background:C.bgSoft, border:"none", borderRadius:12, padding:8, cursor:"pointer" }}><X size={22} style={{ color:C.inkSoft }} /></button>
         </div>
         {children}
       </div>
@@ -139,9 +145,7 @@ function SubTabs({ tabs, active, onChange }) {
   return (
     <div style={{ display:"flex", background:C.white, borderRadius:24, padding:6, border:`2px solid ${C.primaryFg}`, boxShadow:"0 4px 12px rgba(26,26,46,0.04)", width:"fit-content", marginBottom:24 }}>
       {tabs.map(t=>(
-        <button key={t} onClick={()=>onChange(t)} style={{ padding:"8px 24px", borderRadius:18, fontWeight:800, fontSize:13, border:"none", cursor:"pointer", background:active===t?C.primary:"transparent", color:active===t?"#fff":C.inkSoft, boxShadow:active===t?"0 4px 12px rgba(108,71,255,0.25)":"none", transition:"all .15s" }}>
-          {t}
-        </button>
+        <button key={t} onClick={()=>onChange(t)} style={{ padding:"8px 24px", borderRadius:18, fontWeight:800, fontSize:13, border:"none", cursor:"pointer", background:active===t?C.primary:"transparent", color:active===t?"#fff":C.inkSoft, boxShadow:active===t?"0 4px 12px rgba(108,71,255,0.25)":"none", transition:"all .15s" }}>{t}</button>
       ))}
     </div>
   );
@@ -188,9 +192,9 @@ function ChildrenDropdown({ state, update }) {
   }, []);
 
   const addKid = () => {
-    if (!form.name || !form.age) return;
-    update({ kids:[...state.kids, {...form, id:Date.now(), age:parseInt(form.age)}] });
-    setForm({ name:"", age:"5", gender:"Boy" }); setAdding(false);
+    if (!form.name||!form.age) return;
+    update({ kids:[...state.kids,{...form,id:Date.now(),age:parseInt(form.age)}] });
+    setForm({ name:"",age:"5",gender:"Boy" }); setAdding(false);
   };
 
   return (
@@ -204,15 +208,12 @@ function ChildrenDropdown({ state, update }) {
 
       {open && (
         <div style={{ position:"absolute", top:"calc(100% + 8px)", right:0, width:320, background:C.white, borderRadius:24, boxShadow:"0 16px 48px rgba(26,26,46,0.16)", border:`1.5px solid ${C.primaryFg}`, zIndex:3000, overflow:"hidden" }}>
-          {/* Header */}
           <div style={{ padding:"16px 20px 12px", borderBottom:`1.5px solid ${C.primaryFg}`, display:"flex", justifyContent:"space-between", alignItems:"center" }}>
             <span style={{ fontWeight:800, fontSize:14, color:C.ink }}>Family Profiles</span>
             <button onClick={()=>setAdding(a=>!a)} style={{ display:"flex", alignItems:"center", gap:4, padding:"5px 12px", background:C.primaryFg, color:C.primary, border:"none", borderRadius:10, fontWeight:800, fontSize:12, cursor:"pointer" }}>
               <Plus size={13} /> Add
             </button>
           </div>
-
-          {/* Add form */}
           {adding && (
             <div style={{ padding:"14px 20px", borderBottom:`1.5px solid ${C.primaryFg}`, background:C.bgSoft }}>
               <input placeholder="Child's name" value={form.name} onChange={e=>setForm(f=>({...f,name:e.target.value}))} style={{ ...inputSt, fontSize:13, padding:"10px 14px", marginBottom:8 }} />
@@ -228,12 +229,8 @@ function ChildrenDropdown({ state, update }) {
               </div>
             </div>
           )}
-
-          {/* Kids list */}
           <div style={{ maxHeight:260, overflowY:"auto" }}>
-            {state.kids.length === 0 && (
-              <div style={{ padding:"24px 20px", textAlign:"center", color:C.inkSoft, fontSize:13 }}>No children added yet.</div>
-            )}
+            {state.kids.length===0 && <div style={{ padding:"24px 20px", textAlign:"center", color:C.inkSoft, fontSize:13 }}>No children added yet.</div>}
             {state.kids.map(k=>(
               <div key={k.id} style={{ display:"flex", alignItems:"center", gap:12, padding:"12px 20px", borderBottom:`1px solid ${C.primaryFg}` }}>
                 <div style={{ width:36, height:36, background:C.primaryFg, borderRadius:10, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
@@ -251,15 +248,62 @@ function ChildrenDropdown({ state, update }) {
           </div>
         </div>
       )}
+      <Modal show={false} onClose={()=>{}} title="" accentColor={C.primary}><div/></Modal>
+    </div>
+  );
+}
 
-      {/* Add child modal fallback for mobile */}
-      <Modal show={false} onClose={()=>{}} title="New Profile" accentColor={C.primary}><div/></Modal>
+// ── Intent Selector (Play / Learn toggle) ──────────────────────
+function IntentSelector({ intent, onChange }) {
+  return (
+    <div style={{ background:C.white, borderRadius:24, padding:6, border:`2px solid ${C.primaryFg}`, boxShadow:"0 4px 12px rgba(26,26,46,0.04)", display:"inline-flex", gap:4, marginBottom:20 }}>
+      {[["play", Palette, "Play"], ["learn", Brain, "Learn"]].map(([val, Icon, lbl])=>(
+        <button key={val} onClick={()=>onChange(val)} style={{ display:"flex", alignItems:"center", gap:8, padding:"12px 28px", borderRadius:20, background:intent===val?C.primary:"transparent", color:intent===val?"#fff":C.inkSoft, border:"none", cursor:"pointer", fontWeight:800, fontSize:15, textTransform:"uppercase", letterSpacing:"0.06em", boxShadow:intent===val?`0 8px 24px ${C.primary}40`:"none", transition:"all .15s" }}>
+          <Icon size={20} fill={intent===val?"currentColor":"none"} /> {lbl}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// ── Learning Focus Cards (multi-select) ────────────────────────
+function FocusSelector({ selected, onChange }) {
+  const toggle = id => onChange(selected.includes(id) ? selected.filter(f=>f!==id) : [...selected, id]);
+  return (
+    <div style={{ marginBottom:20 }}>
+      <p style={{ fontSize:14, fontWeight:700, color:C.inkMid, marginBottom:14 }}>What do you want to explore today?</p>
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(2,1fr)", gap:12 }}>
+        {LEARN_FOCUSES.map(focus=>{
+          const active = selected.includes(focus.id);
+          return (
+            <button key={focus.id} onClick={()=>toggle(focus.id)} style={{ background:active?focus.color:C.white, border:`3px solid ${active?focus.color:C.primaryFg}`, borderRadius:24, padding:20, cursor:"pointer", textAlign:"left", transition:"all .15s", transform:active?"scale(1.02)":"scale(1)", boxShadow:active?`0 8px 24px ${focus.color}40`:"none" }}>
+              <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", marginBottom:8 }}>
+                <div style={{ fontSize:30 }}>{focus.emoji}</div>
+                {active && <CheckCircle size={22} style={{ color:"#fff" }} fill="currentColor" />}
+              </div>
+              <div style={{ fontWeight:800, fontSize:15, color:active?"#fff":C.ink, marginBottom:3 }}>{focus.label}</div>
+              <div style={{ fontSize:11, fontWeight:600, color:active?"rgba(255,255,255,0.8)":C.inkSoft }}>{focus.subtitle}</div>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ── Environment filter ─────────────────────────────────────────
+function FilterChipBar({ envFilter, onEnvChange }) {
+  const toggle = val => onEnvChange(envFilter.includes(val) ? envFilter.filter(f=>f!==val) : [...envFilter, val]);
+  return (
+    <div style={{ display:"flex", gap:8, marginBottom:20 }}>
+      <button onClick={()=>toggle("indoor")}  style={pillSt(envFilter.includes("indoor"),  C.primary, "#fff")}>🏠 Indoor</button>
+      <button onClick={()=>toggle("outdoor")} style={pillSt(envFilter.includes("outdoor"), C.success, "#fff")}>🌳 Outdoor</button>
     </div>
   );
 }
 
 // ── Who's Joining Bar ──────────────────────────────────────────
-function JoiningBar({ state, onGenerate, genLabel, accentColor, extraButton }) {
+function JoiningBar({ state, onGenerate, genLabel, accentColor }) {
   const [selKids, setSelKids] = useState([]);
   const [mode, setMode] = useState(null);
   const [adults, setAdults] = useState(0);
@@ -273,17 +317,16 @@ function JoiningBar({ state, onGenerate, genLabel, accentColor, extraButton }) {
     <div style={{ display:"flex", alignItems:"center", gap:6 }}>
       <span style={{ fontSize:11, fontWeight:700, color:C.inkSoft, whiteSpace:"nowrap" }}>{lbl}</span>
       <div style={{ display:"flex", alignItems:"center", background:C.bgSoft, borderRadius:12, border:`1.5px solid ${C.primaryFg}`, overflow:"hidden" }}>
-        <button onClick={()=>setVal(Math.max(0,val-1))} style={{ width:28, height:28, border:"none", background:"none", cursor:"pointer", fontWeight:800, color:fg, fontSize:16, lineHeight:1 }}>−</button>
+        <button onClick={()=>setVal(Math.max(0,val-1))} style={{ width:28, height:28, border:"none", background:"none", cursor:"pointer", fontWeight:800, color:fg, fontSize:16 }}>−</button>
         <span style={{ width:24, textAlign:"center", fontWeight:800, fontSize:13, color:C.ink }}>{val}{val>=5?"+":" "}</span>
-        <button onClick={()=>setVal(Math.min(5,val+1))} style={{ width:28, height:28, border:"none", background:"none", cursor:"pointer", fontWeight:800, color:fg, fontSize:16, lineHeight:1 }}>+</button>
+        <button onClick={()=>setVal(Math.min(5,val+1))} style={{ width:28, height:28, border:"none", background:"none", cursor:"pointer", fontWeight:800, color:fg, fontSize:16 }}>+</button>
       </div>
     </div>
   );
 
   return (
     <div style={{ background:C.white, borderRadius:24, border:`2px solid ${C.primaryFg}`, padding:"14px 18px", marginBottom:20, boxShadow:"0 4px 16px rgba(26,26,46,0.05)" }}>
-      {/* Row 1: kid chips */}
-      {state.kids.length === 0
+      {state.kids.length===0
         ? <p style={{ color:C.inkSoft, fontSize:13, margin:0 }}>Add children via the Children menu in the top-right corner.</p>
         : <>
           <div style={{ display:"flex", flexWrap:"wrap", gap:6, alignItems:"center", marginBottom:10 }}>
@@ -294,22 +337,16 @@ function JoiningBar({ state, onGenerate, genLabel, accentColor, extraButton }) {
               </button>
             ))}
           </div>
-
-          {/* Row 2: mode + steppers + generate */}
           <div style={{ display:"flex", flexWrap:"wrap", gap:8, alignItems:"center" }}>
             {["👤 Individual","👨‍👩‍👧 Group"].map(m=>(
               <button key={m} onClick={()=>setMode(m)} style={{ ...pillSt(mode===m,fg,"#fff"), padding:"6px 14px", fontSize:12 }}>{m}</button>
             ))}
-
-            {isGroup && (
-              <>
-                <Stepper val={adults} setVal={setAdults} lbl="Adults" />
-                <Stepper val={extra}  setVal={setExtra}  lbl="Extra kids" />
-              </>
-            )}
-
+            {isGroup && <>
+              <Stepper val={adults} setVal={setAdults} lbl="Adults" />
+              <Stepper val={extra}  setVal={setExtra}  lbl="Extra kids" />
+            </>}
             <div style={{ marginLeft:"auto" }}>
-              <button onClick={()=>onGenerate({selKids, mode, adults:isGroup?adults:0, extraKids:isGroup?extra:0})} disabled={!ready} style={{ display:"flex", alignItems:"center", gap:6, padding:"9px 20px", background:ready?fg:C.inkFaint, color:"#fff", border:"none", borderRadius:16, fontWeight:800, fontSize:13, cursor:ready?"pointer":"not-allowed", opacity:ready?1:0.45, boxShadow:ready?`0 4px 16px ${fg}40`:"none", transition:"all .15s", whiteSpace:"nowrap" }}>
+              <button onClick={()=>onGenerate({selKids,mode,adults:isGroup?adults:0,extraKids:isGroup?extra:0})} disabled={!ready} style={{ display:"flex", alignItems:"center", gap:6, padding:"9px 20px", background:ready?fg:C.inkFaint, color:"#fff", border:"none", borderRadius:16, fontWeight:800, fontSize:13, cursor:ready?"pointer":"not-allowed", opacity:ready?1:0.45, boxShadow:ready?`0 4px 16px ${fg}40`:"none", transition:"all .15s", whiteSpace:"nowrap" }}>
                 <Sparkles size={15} fill="currentColor" /> {genLabel||"Generate"}
               </button>
             </div>
@@ -321,7 +358,7 @@ function JoiningBar({ state, onGenerate, genLabel, accentColor, extraButton }) {
 }
 
 // ── Idea Card ──────────────────────────────────────────────────
-function IdeaCard({ idea, onDiscard, onSave, onComplete, isSaved, accentColor }) {
+function IdeaCard({ idea, onDiscard, onSave, onComplete, isSaved, accentColor, isLearning }) {
   const [phase, setPhase] = useState("idle");
   const [discardReason, setDiscardReason] = useState("");
   const [difficulty, setDifficulty] = useState(2);
@@ -329,6 +366,7 @@ function IdeaCard({ idea, onDiscard, onSave, onComplete, isSaved, accentColor })
   const [expanded, setExpanded] = useState(false);
   const fg = accentColor||C.primary;
   const mats = Array.isArray(idea.materials) ? idea.materials : (typeof idea.materials==="string"&&idea.materials ? [idea.materials] : []);
+  const focusTags = isLearning && Array.isArray(idea.focuses) ? idea.focuses : [];
 
   return (
     <div style={{ ...cardSt, marginBottom:20 }}>
@@ -337,7 +375,12 @@ function IdeaCard({ idea, onDiscard, onSave, onComplete, isSaved, accentColor })
         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", gap:12, marginBottom:12 }}>
           <div style={{ flex:1 }}>
             <div style={{ display:"flex", gap:6, marginBottom:8, flexWrap:"wrap", alignItems:"center" }}>
-              {(idea.category||idea.topic) && <span style={tagSt(C.primaryFg,C.primary)}>{idea.category||idea.topic}</span>}
+              {focusTags.map(fid=>{
+                const f = LEARN_FOCUSES.find(x=>x.id===fid);
+                if (!f) return null;
+                return <span key={fid} style={{ ...tagSt(f.color+"22",f.color), display:"inline-flex", alignItems:"center", gap:3 }}>{f.emoji} {f.label}</span>;
+              })}
+              {idea.category && <span style={tagSt(C.primaryFg,C.primary)}>{idea.category}</span>}
               {idea.effortLevel && <MovementDots level={idea.effortLevel} />}
             </div>
             <h3 style={{ fontWeight:900, fontSize:22, color:C.ink, margin:0, lineHeight:1.2 }}>{idea.title}</h3>
@@ -351,12 +394,20 @@ function IdeaCard({ idea, onDiscard, onSave, onComplete, isSaved, accentColor })
 
         <p style={{ fontSize:15, lineHeight:1.7, color:C.inkMid, fontWeight:500, marginBottom:10 }}>{idea.description}</p>
 
+        {isLearning && Array.isArray(idea.learningOutcomes) && idea.learningOutcomes.length>0 && (
+          <div style={{ background:C.primaryFg, borderRadius:16, padding:"12px 16px", borderLeft:`3px solid ${C.primary}`, marginBottom:12 }}>
+            <div style={{ fontSize:12, fontWeight:800, color:C.primary, marginBottom:6 }}>🎯 LEARNING OUTCOMES</div>
+            <ul style={{ margin:0, paddingLeft:20, fontSize:13, color:C.primary, lineHeight:1.6 }}>
+              {idea.learningOutcomes.map((o,i)=><li key={i}>{o}</li>)}
+            </ul>
+          </div>
+        )}
+
         {(idea.whySuitable||idea.develops||mats.length>0) && (
           <button onClick={()=>setExpanded(!expanded)} style={{ background:"none", border:"none", cursor:"pointer", display:"flex", alignItems:"center", gap:4, color:C.inkSoft, fontSize:12, fontWeight:700, padding:0, marginBottom:expanded?12:0 }}>
             {expanded?<ChevronUp size={14}/>:<ChevronDown size={14}/>} {expanded?"Less":"More details"}
           </button>
         )}
-
         {expanded && (
           <div style={{ display:"flex", flexDirection:"column", gap:10, paddingTop:12, borderTop:`2px solid ${C.primaryFg}` }}>
             {idea.whySuitable && (
@@ -366,16 +417,14 @@ function IdeaCard({ idea, onDiscard, onSave, onComplete, isSaved, accentColor })
             )}
             {idea.develops && (
               <div style={{ background:C.primaryFg, borderRadius:16, padding:"10px 14px", borderLeft:`3px solid ${C.primary}` }}>
-                <p style={{ fontSize:13, color:C.primary, margin:0, lineHeight:1.6 }}><strong>Develops:</strong> {idea.develops}</p>
+                <p style={{ fontSize:13, color:C.primary, margin:0, lineHeight:1.6 }}><strong>🧠 Develops:</strong> {idea.develops}</p>
               </div>
             )}
             {mats.length>0 && (
               <div>
                 <p style={{ fontSize:11, fontWeight:800, textTransform:"uppercase", letterSpacing:"0.08em", color:C.inkSoft, marginBottom:6 }}>You'll need</p>
                 <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
-                  {mats.map((m,i)=>(
-                    <span key={i} style={{ background:C.bgSoft, border:`2px solid ${C.primaryFg}`, borderRadius:10, padding:"4px 12px", fontSize:12, fontWeight:700, color:C.inkMid }}>{m}</span>
-                  ))}
+                  {mats.map((m,i)=><span key={i} style={{ background:C.bgSoft, border:`2px solid ${C.primaryFg}`, borderRadius:10, padding:"4px 12px", fontSize:12, fontWeight:700, color:C.inkMid }}>{m}</span>)}
                 </div>
               </div>
             )}
@@ -396,7 +445,6 @@ function IdeaCard({ idea, onDiscard, onSave, onComplete, isSaved, accentColor })
             </div>
           </div>
         )}
-
         {phase==="complete" && (
           <div style={{ background:C.successFg, borderRadius:20, padding:18, marginTop:14 }}>
             <p style={{ fontWeight:800, color:C.success, marginBottom:16, fontSize:14 }}>🎉 How did it go?</p>
@@ -437,26 +485,35 @@ function useIdeas(state, update) {
   return { ideas, loading, generate, onDiscard, onSave, onComplete };
 }
 
-// ── Play Section ───────────────────────────────────────────────
-function PlaySection({ state, update }) {
-  const [tab, setTab] = useState("New");
-  const [catIdx, setCatIdx] = useState(0);
+// ── Unified Activities Section ─────────────────────────────────
+function ActivitiesSection({ state, update }) {
   const { ideas, loading, generate, onDiscard, onSave, onComplete } = useIdeas(state, update);
+  const [catIdx, setCatIdx] = useState(0);
   const cat = PLAY_CATS[catIdx];
-  const saved = state.savedIdeas.filter(i=>i.category===cat.type);
+  const envHint = (state.envFilter||[]).length>0 ? ` Preferred setting: ${state.envFilter.join(" or ")}.` : "";
 
-  const doGenerate = ({ selKids, mode, adults, extraKids }) => {
+  const doGeneratePlay = ({ selKids, mode, adults, extraKids }) => {
     const kids = state.kids.filter(k=>selKids.includes(k.id));
     const kd = kids.map(k=>`${k.name} (${k.age}yo, ${k.gender}, ${AGE_GROUPS(k.age)})`).join(", ");
-    generate(`${INSPIRATION[cat.type]||""}\n\nGenerate 4 specific, hands-on ${cat.type} free play activities for: ${kd}. Mode: ${mode}. Adults: ${adults}. Extra kids: ${extraKids}. Return JSON array: [{id,title,description,whySuitable,develops,effortLevel(1-4),category:"${cat.type}",materials:[]}]. materials must be a JSON array.`);
+    generate(`${INSPIRATION[cat.type]||""}\n\nGenerate 4 specific, hands-on ${cat.type} free play activities for: ${kd}. Mode: ${mode}. Adults: ${adults}. Extra kids: ${extraKids}.${envHint} Return JSON array: [{id,title,description,whySuitable,develops,effortLevel(1-4),category:"${cat.type}",materials:[]}]. materials must be a JSON array.`);
+  };
+
+  const doGenerateLearn = ({ selKids, mode, adults, extraKids }) => {
+    if (!(state.learnFocuses||[]).length) return;
+    const kids = state.kids.filter(k=>selKids.includes(k.id));
+    const kd = kids.map(k=>`${k.name} (${k.age}yo, ${k.gender}, ${AGE_GROUPS(k.age)})`).join(", ");
+    const focuses = state.learnFocuses.join(", ");
+    generate(`Generate 4 experiential learning activities focused on: ${focuses} for: ${kd}. Mode: ${mode}. Adults: ${adults}. Extra kids: ${extraKids}.${envHint} Homeschool/worldschool hands-on style. Return JSON: [{id,title,description,whySuitable,develops,effortLevel(1-4),focuses:${JSON.stringify(state.learnFocuses)},learningOutcomes:["outcome1","outcome2","outcome3"],materials:[]}]. All arrays must be JSON arrays.`);
   };
 
   return (
     <div>
-      <PageHeader title="Discover Joy" subtitle="Personalised activities to spark creativity and connection." />
-      <JoiningBar state={state} onGenerate={doGenerate} genLabel={`Generate ${cat.label}`} accentColor={cat.color} />
-      <SubTabs tabs={["New","Saved"]} active={tab} onChange={setTab} />
-      {tab==="New" && <>
+      <PageHeader title="Discover & Learn" subtitle="Activities designed for your family's growth" />
+      <IntentSelector intent={state.intent||"play"} onChange={val=>update({intent:val})} />
+      <FilterChipBar envFilter={state.envFilter||[]} onEnvChange={val=>update({envFilter:val})} />
+
+      {(state.intent||"play")==="play" && <>
+        <JoiningBar state={state} onGenerate={doGeneratePlay} genLabel={`Generate ${cat.label}`} accentColor={cat.color} />
         <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:12, marginBottom:20 }}>
           {PLAY_CATS.map((c,i)=>(
             <button key={c.type} onClick={()=>setCatIdx(i)} style={{ padding:"20px 8px", borderRadius:24, border:`3px solid ${catIdx===i?c.color:C.primaryFg}`, background:C.white, cursor:"pointer", display:"flex", flexDirection:"column", alignItems:"center", gap:8, transform:catIdx===i?"scale(1.04)":"scale(1)", transition:"all .15s", boxShadow:catIdx===i?`0 8px 24px ${c.color}25`:"none" }}>
@@ -468,12 +525,20 @@ function PlaySection({ state, update }) {
           ))}
         </div>
         {loading && <Loading />}
-        {ideas.map(idea=><IdeaCard key={idea.id} idea={idea} onDiscard={onDiscard} onSave={onSave} onComplete={onComplete} isSaved={!!state.savedIdeas.find(s=>s.id===idea.id)} accentColor={cat.color} />)}
+        {ideas.map(idea=><IdeaCard key={idea.id} idea={idea} onDiscard={onDiscard} onSave={onSave} onComplete={onComplete} isSaved={!!state.savedIdeas.find(s=>s.id===idea.id)} accentColor={cat.color} isLearning={false} />)}
       </>}
-      {tab==="Saved" && (saved.length===0
-        ? <Empty icon={Bookmark} title="No saved activities yet" text={`Save suggestions from the "New" tab.`} />
-        : saved.map(idea=><IdeaCard key={idea.id} idea={idea} onDiscard={onDiscard} onSave={onSave} onComplete={onComplete} isSaved accentColor={cat.color} />)
-      )}
+
+      {state.intent==="learn" && <>
+        <FocusSelector selected={state.learnFocuses||[]} onChange={val=>update({learnFocuses:val})} />
+        {(state.learnFocuses||[]).length>0
+          ? <>
+              <JoiningBar state={state} onGenerate={doGenerateLearn} genLabel="Generate Activities" accentColor={C.primary} />
+              {loading && <Loading />}
+              {ideas.map(idea=><IdeaCard key={idea.id} idea={idea} onDiscard={onDiscard} onSave={onSave} onComplete={onComplete} isSaved={!!state.savedIdeas.find(s=>s.id===idea.id)} accentColor={C.primary} isLearning={true} />)}
+            </>
+          : <Empty icon={Brain} title="Select a Learning Focus" text="Choose one or more areas above to generate personalised learning activities." />
+        }
+      </>}
     </div>
   );
 }
@@ -532,46 +597,10 @@ function MapSection({ state }) {
   );
 }
 
-// ── Learn Section ──────────────────────────────────────────────
-function LearnSection({ state, update }) {
-  const [tab, setTab] = useState("New");
-  const [topic, setTopic] = useState("Science");
-  const { ideas, loading, generate, onDiscard, onSave, onComplete } = useIdeas(state, update);
-  const saved = state.savedIdeas.filter(i=>i.topic===topic);
-
-  const doGenerate = ({ selKids, mode, adults, extraKids }) => {
-    const kids = state.kids.filter(k=>selKids.includes(k.id));
-    const kd = kids.map(k=>`${k.name} (${k.age}yo, ${k.gender}, ${AGE_GROUPS(k.age)})`).join(", ");
-    generate(`Generate 4 experiential ${topic} learning activities for: ${kd}. Mode: ${mode}. Adults: ${adults}. Extra kids: ${extraKids}. Homeschool/worldschool hands-on style. Inspire from: nature journals, detective mysteries, art projects, outdoor exploration, sensory play. Return JSON: [{id,title,description,whySuitable,develops,effortLevel(1-4),topic:"${topic}",materials:[]}]. materials must be a JSON array.`);
-  };
-
-  return (
-    <div>
-      <PageHeader title="Creative Learning" subtitle="Homeschooling & world-schooling inspiration." />
-      <JoiningBar state={state} onGenerate={doGenerate} genLabel={`Explore ${topic}`} accentColor={C.primary} />
-      <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginBottom:20 }}>
-        {LEARN_TOPICS.map(t=>(
-          <button key={t} onClick={()=>setTopic(t)} style={pillSt(topic===t,C.primary,"#fff")}>{t}</button>
-        ))}
-      </div>
-      <SubTabs tabs={["New","Saved"]} active={tab} onChange={setTab} />
-      {tab==="New" && <>
-        {loading && <Loading />}
-        {ideas.map(idea=><IdeaCard key={idea.id} idea={idea} onDiscard={onDiscard} onSave={onSave} onComplete={onComplete} isSaved={!!state.savedIdeas.find(s=>s.id===idea.id)} accentColor={C.primary} />)}
-      </>}
-      {tab==="Saved" && (saved.length===0
-        ? <Empty icon={Bookmark} title="No saved activities yet" text="Save suggestions from the New tab." />
-        : saved.map(idea=><IdeaCard key={idea.id} idea={idea} onDiscard={onDiscard} onSave={onSave} onComplete={onComplete} isSaved accentColor={C.primary} />)
-      )}
-    </div>
-  );
-}
-
 // ── History Section ────────────────────────────────────────────
 function HistorySection({ state }) {
   const acts = [...state.completedActivities].sort((a,b)=>b.completedAt-a.completedAt);
   const avgE = acts.length?(acts.reduce((s,a)=>s+a.enjoyment,0)/acts.length).toFixed(1):"—";
-
   return (
     <div>
       <PageHeader title="Our Journey" subtitle="A timeline of memories and activities." />
@@ -704,62 +733,6 @@ function CommunitySection({ state, update }) {
 export default function App() {
   const [state, update] = useAppState();
   const [section, setSection] = useState(0);
-  const [authenticated, setAuthenticated] = useState(false);
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-
-  // Check if already authenticated on mount
-  useEffect(() => {
-    const auth = localStorage.getItem("kindred_auth");
-    if (auth === "true") {
-      setAuthenticated(true);
-    }
-  }, []);
-
-  const handleLogin = () => {
-    // CHANGE THIS PASSWORD - Replace "PlayfulKids!1122" with your own secure password
-    if (password === "PlayfulKids!1122") {
-      setAuthenticated(true);
-      localStorage.setItem("kindred_auth", "true");
-      setError("");
-    } else {
-      setError("Invalid access code");
-      setPassword("");
-    }
-  };
-
-  // Password screen
-  if (!authenticated) {
-    return (
-      <div style={{ minHeight:"100vh", background:C.bgSoft, display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif", padding:20 }}>
-        <div style={{ width:"100%", maxWidth:420, background:C.white, borderRadius:48, padding:48, boxShadow:"0 40px 80px rgba(26,26,46,0.1)", border:`2px solid ${C.primaryFg}`, textAlign:"center" }}>
-          <div style={{ width:80, height:80, background:C.primary, borderRadius:24, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 24px", boxShadow:`0 12px 32px ${C.primary}40` }}>
-            <Lock size={40} style={{ color:"#fff" }} />
-          </div>
-          <h1 style={{ fontWeight:900, fontSize:32, color:C.ink, margin:"0 0 8px", letterSpacing:"-1px" }}>Kindred</h1>
-          <p style={{ color:C.inkSoft, fontSize:14, fontWeight:600, marginBottom:32 }}>Family Activity Companion</p>
-          
-          <div style={{ marginBottom:20 }}>
-            <input 
-              type="password" 
-              placeholder="Enter access code" 
-              value={password}
-              onChange={e => { setPassword(e.target.value); setError(""); }}
-              onKeyPress={e => e.key === 'Enter' && handleLogin()}
-              style={{ ...inputSt, textAlign:"center", fontSize:18 }}
-            />
-            {error && <p style={{ color:C.red, fontSize:13, fontWeight:700, marginTop:8 }}>{error}</p>}
-          </div>
-          
-          <BigBtn onClick={handleLogin} color={C.primary}>
-            <Lock size={18} /> Access App
-          </BigBtn>
-          
-          <p style={{ color:C.inkFaint, fontSize:11, marginTop:24, fontWeight:600 }}>This is a private family app. Contact the owner for access.</p>
-        </div>
-      </div>
-    );
-  }
 
   if (!state) return (
     <div style={{ display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", height:"100vh", background:C.bgSoft, gap:16 }}>
@@ -772,7 +745,6 @@ export default function App() {
 
   return (
     <div style={{ minHeight:"100vh", background:C.bgSoft, fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif", color:C.ink }}>
-      {/* Header */}
       <header style={{ position:"sticky", top:0, zIndex:1000, background:"rgba(245,243,255,0.9)", backdropFilter:"blur(12px)", borderBottom:`1px solid ${C.primaryFg}`, padding:"12px 20px", display:"flex", alignItems:"center", justifyContent:"space-between", boxShadow:"0 2px 12px rgba(108,71,255,0.06)" }}>
         <div style={{ display:"flex", alignItems:"center", gap:12 }}>
           <div style={{ width:42, height:42, background:C.primary, borderRadius:13, display:"flex", alignItems:"center", justifyContent:"center", boxShadow:`0 4px 16px ${C.primary}35` }}>
@@ -791,16 +763,13 @@ export default function App() {
         </div>
       </header>
 
-      {/* Content */}
       <main style={{ maxWidth:720, margin:"0 auto", padding:"20px 16px 120px" }}>
-        {section===0 && <PlaySection state={state} update={update} />}
+        {section===0 && <ActivitiesSection state={state} update={update} />}
         {section===1 && <MapSection state={state} />}
-        {section===2 && <LearnSection state={state} update={update} />}
-        {section===3 && <HistorySection state={state} />}
-        {section===4 && <CommunitySection state={state} update={update} />}
+        {section===2 && <HistorySection state={state} />}
+        {section===3 && <CommunitySection state={state} update={update} />}
       </main>
 
-      {/* Floating bottom nav */}
       <nav style={{ position:"fixed", bottom:24, left:"50%", transform:"translateX(-50%)", background:"rgba(26,26,46,0.92)", backdropFilter:"blur(12px)", borderRadius:32, padding:"10px 14px", display:"flex", alignItems:"center", gap:6, boxShadow:"0 8px 32px rgba(26,26,46,0.25)", zIndex:2000, border:"2px solid rgba(255,255,255,0.08)" }}>
         {NAV.map((item,i)=>(
           <button key={item.id} onClick={()=>setSection(i)} style={{ display:"flex", alignItems:"center", gap:section===i?8:0, padding:section===i?"10px 18px":"10px 12px", borderRadius:22, background:section===i?C.primary:"transparent", border:"none", cursor:"pointer", color:section===i?"#fff":"rgba(255,255,255,0.45)", fontWeight:800, fontSize:13, transition:"all .2s", boxShadow:section===i?`0 4px 16px ${C.primary}50`:"none", whiteSpace:"nowrap" }}>
