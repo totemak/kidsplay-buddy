@@ -1,26 +1,118 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Kindred - Personalized family activities for children. Generate custom play and learning activities tailored to your kids." />
+    <meta name="keywords" content="family activities, kids, children, parenting, education, learning, play" />
+    <meta name="author" content="Kindred App" />
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Kindred - Family Activity Companion" />
+    <meta property="og:description" content="Personalized play and learning activities for your children" />
+    
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image" />
+    <meta property="twitter:title" content="Kindred - Family Activity Companion" />
+    <meta property="twitter:description" content="Personalized play and learning activities for your children" />
+    
     <title>Kindred - Family Activity Companion</title>
-    <meta name="description" content="Personalized activity ideas for families" />
+    
     <style>
+      /* Loading screen styles */
+      #loading-screen {
+        position: fixed;
+        inset: 0;
+        background: #F5F3FF;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+        transition: opacity 0.3s ease;
+      }
+      
+      #loading-screen.fade-out {
+        opacity: 0;
+        pointer-events: none;
+      }
+      
+      .loading-logo {
+        width: 64px;
+        height: 64px;
+        background: #6C47FF;
+        border-radius: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 8px 24px rgba(108, 71, 255, 0.4);
+        margin-bottom: 20px;
+        animation: pulse 2s ease-in-out infinite;
+      }
+      
+      @keyframes pulse {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.05); }
+      }
+      
+      .loading-text {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        font-weight: 900;
+        font-size: 20px;
+        color: #1A1A2E;
+      }
+      
+      /* Base styles */
       * {
         margin: 0;
         padding: 0;
         box-sizing: border-box;
       }
+      
       body {
         margin: 0;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
+        background: #F5F3FF;
+      }
+      
+      #root {
+        min-height: 100vh;
       }
     </style>
   </head>
   <body>
+    <!-- Loading screen (removed by React on mount) -->
+    <div id="loading-screen">
+      <div class="loading-logo">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+          <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+          <path d="M2 17l10 5 10-5"/>
+          <path d="M2 12l10 5 10-5"/>
+        </svg>
+      </div>
+      <div class="loading-text">Loading Kindred...</div>
+    </div>
+    
+    <!-- React app mounts here -->
     <div id="root"></div>
-    <script type="module" src="/main.jsx"></script>
+    
+    <script type="module" src="/src/main.jsx"></script>
+    
+    <script>
+      // Remove loading screen after app loads
+      window.addEventListener('load', () => {
+        setTimeout(() => {
+          const loadingScreen = document.getElementById('loading-screen');
+          if (loadingScreen) {
+            loadingScreen.classList.add('fade-out');
+            setTimeout(() => loadingScreen.remove(), 300);
+          }
+        }, 500);
+      });
+    </script>
   </body>
 </html>

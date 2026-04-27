@@ -1,253 +1,180 @@
 # Kindred - Family Activity Companion
 
-A personalized activity suggestion app for families with children.
+**Version:** 5.3 (Consistency Update)  
+**Last Updated:** April 24, 2026
 
-## 🚀 Quick Deploy to Vercel (Recommended - FREE)
+Kindred is a personalized family activity app that generates age-appropriate play and learning activities tailored to your children's profiles. Built with React and powered by Claude AI.
+
+## 🌟 Features
+
+- **Personalized Activities**: Generate custom play and learning activities based on children's ages and interests
+- **4 Play Categories**: Active & Sports, Creative & Arts, Pretend & Story, Games & Puzzles
+- **4 Learning Focuses**: How to Learn, Soft Skills, Financial Literacy, Interdisciplinary
+- **Activity History**: Track completed activities with difficulty and enjoyment ratings
+- **Nearby Places**: Discover kid-friendly locations near you
+- **Community**: Share and rate activity ideas with other families
+- **Multi-language Support**: 9 languages including English, Spanish, French, Portuguese, and more
+- **Persistent State**: All data saved locally in browser
+
+## 🚀 Quick Start
 
 ### Prerequisites
-- A GitHub account
+
+- Node.js 18+ and npm
 - An Anthropic API key ([get one here](https://console.anthropic.com/))
-- A Vercel account (free tier)
 
-### Step-by-Step Deployment
+### Local Development
 
-#### 1. Push to GitHub
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/yourusername/kindred-app.git
+   cd kindred-app
+   ```
 
-```bash
-# Initialize git repository
-cd kindred-deploy
-git init
-git add .
-git commit -m "Initial commit"
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
 
-# Create a new repository on GitHub, then:
-git remote add origin https://github.com/YOUR-USERNAME/kindred-app.git
-git branch -M main
-git push -u origin main
+3. **Set up environment variables**
+   
+   Create a `.env` file in the root directory:
+   ```
+   ANTHROPIC_API_KEY=your_api_key_here
+   ```
+
+4. **Start development server**
+   ```bash
+   npm run dev
+   ```
+
+5. **Open in browser**
+   
+   Navigate to `http://localhost:5173`
+
+## 📦 Deployment to Vercel
+
+### One-Click Deploy
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/yourusername/kindred-app)
+
+### Manual Deployment
+
+1. **Install Vercel CLI**
+   ```bash
+   npm install -g vercel
+   ```
+
+2. **Login to Vercel**
+   ```bash
+   vercel login
+   ```
+
+3. **Deploy**
+   ```bash
+   vercel
+   ```
+
+4. **Set Environment Variables**
+   
+   In your Vercel dashboard:
+   - Go to Settings > Environment Variables
+   - Add `ANTHROPIC_API_KEY` with your API key
+   - Redeploy to apply changes
+
+## 🔧 Configuration
+
+### API Backend
+
+The app uses a serverless function at `/api/claude` to proxy requests to the Anthropic API. This keeps your API key secure and works seamlessly on Vercel.
+
+### Storage
+
+All user data is stored in `localStorage` with the key `kidsplay_v5`. Data includes:
+- Children profiles
+- Saved activities
+- Completed activities history
+- Community contributions
+- User preferences
+
+## 📁 Project Structure
+
+```
+kindred-app/
+├── src/
+│   └── App.jsx              # Main application component
+├── api/
+│   └── claude.js            # Anthropic API proxy endpoint
+├── public/
+│   └── index.html           # HTML template
+├── package.json             # Dependencies and scripts
+├── vite.config.js           # Vite configuration
+├── vercel.json              # Vercel deployment config
+└── README.md                # This file
 ```
 
-#### 2. Deploy to Vercel
+## 🛠️ Technology Stack
 
-**Option A: Using Vercel Dashboard (Easiest)**
+- **Frontend**: React 18, Vite
+- **Icons**: Lucide React
+- **API**: Anthropic Claude (Sonnet 4)
+- **Styling**: Inline CSS (custom design system)
+- **Deployment**: Vercel (serverless functions)
+- **Storage**: Browser localStorage
 
-1. Go to [vercel.com](https://vercel.com) and sign in
-2. Click "Add New Project"
-3. Import your GitHub repository
-4. Configure:
-   - Framework Preset: **Vite**
-   - Build Command: `npm run build`
-   - Output Directory: `dist`
-5. Add Environment Variable:
-   - Name: `ANTHROPIC_API_KEY`
-   - Value: Your Anthropic API key (starts with `sk-ant-`)
-6. Click "Deploy"
+## 📝 Version History
 
-**Option B: Using Vercel CLI**
+### v5.3 - Consistency Update (Current)
+- Fixed Learning Focuses to single-select behavior
+- Unified visual style between Play and Learn categories
+- Enhanced sticky Generate button visibility
+- Improved environment filter (mutually exclusive options)
+- Fixed onboarding flow for first-time users
+- Optimized state management for better performance
 
-```bash
-# Install Vercel CLI
-npm install -g vercel
+### v5.0 - Major Redesign
+- Redesigned Play categories (activity types vs environments)
+- Added persistent user preferences
+- Simplified navigation (2 main tabs)
+- Enhanced Generate button as sticky FAB
+- Improved onboarding experience
 
-# Login to Vercel
-vercel login
+## 🤝 Contributing
 
-# Deploy
-vercel
+Contributions are welcome! Please follow the [KINDRED_DEVELOPMENT_PROTOCOL.md](KINDRED_DEVELOPMENT_PROTOCOL.md) for all changes.
 
-# Add your API key as environment variable
-vercel env add ANTHROPIC_API_KEY
-# Paste your API key when prompted
-# Select: Production, Preview, Development (all)
+### Development Workflow
 
-# Redeploy to apply environment variable
-vercel --prod
-```
+1. Read the full codebase before making changes
+2. Follow existing patterns and conventions
+3. Test all user flows thoroughly
+4. Update documentation as needed
+5. Submit PR with detailed description
 
-#### 3. Set Your Password
+## 📄 License
 
-Edit `App.jsx` line ~711:
+MIT License - see LICENSE file for details
 
-```javascript
-// CHANGE THIS - Replace "family2025" with your own secure password
-if (password === "family2025") {
-```
+## 🔒 Privacy & Security
 
-Replace `"family2025"` with your chosen password, commit and push:
+- All data stored locally in your browser
+- No user accounts or authentication required
+- API key never exposed to client
+- No personal data collected or transmitted
 
-```bash
-git add App.jsx
-git commit -m "Update access password"
-git push
-```
+## 🆘 Support
 
-Vercel will automatically redeploy with your new password.
+For issues, questions, or feature requests:
+- Open an issue on GitHub
+- Check existing documentation
+- Review the development protocol
 
----
+## 🙏 Acknowledgments
 
-## 🔒 Security Notes
-
-### Password Protection
-- The app has a simple password screen to limit access
-- **Current password: `family2025`** - CHANGE THIS immediately
-- Password is stored in localStorage after first login
-- Not suitable for highly sensitive data (it's client-side only)
-
-### API Key Security
-- Your Anthropic API key is stored as an environment variable in Vercel
-- It's never exposed to the browser
-- All API calls go through the `/api/claude` proxy
+- Built with [Anthropic Claude](https://www.anthropic.com/claude)
+- Icons by [Lucide](https://lucide.dev/)
+- Deployed on [Vercel](https://vercel.com/)
 
 ---
 
-## 💰 Cost Breakdown
-
-### Vercel (FREE Tier)
-- ✅ Hosting: FREE
-- ✅ Serverless Functions: FREE (100GB-Hrs/month)
-- ✅ Bandwidth: 100GB/month FREE
-- ✅ Custom domain: FREE
-- For 5 users: Well within free limits
-
-### Anthropic API Costs
-Claude Sonnet 4 pricing (as of March 2026):
-- Input: $3 per million tokens
-- Output: $15 per million tokens
-
-**Estimated monthly cost for 5 light users:**
-- ~500 activity generations/month
-- Each generation: ~800 input + ~300 output tokens
-- **Total: ~$3-5/month**
-
-**Budget management:**
-```bash
-# Set spending limits in Anthropic Console
-# https://console.anthropic.com/settings/limits
-```
-
----
-
-## 🛠️ Local Development
-
-```bash
-# Install dependencies
-npm install
-
-# Start development server
-npm run dev
-
-# Build for production
-npm run build
-
-# Preview production build
-npm run preview
-```
-
-**Note:** For local development, you need to:
-1. Create `.env.local` file
-2. Add: `ANTHROPIC_API_KEY=your-key-here`
-3. The API proxy won't work locally without a serverless function runner
-
----
-
-## 📱 Sharing with Your 5 Users
-
-Once deployed, share:
-1. **URL**: `https://your-app-name.vercel.app`
-2. **Password**: Whatever you set in App.jsx
-3. **Instructions**: 
-   - Open the link
-   - Enter the access code
-   - Add children profiles
-   - Start generating activities!
-
----
-
-## 🔄 Making Updates
-
-```bash
-# Make your changes
-# Then commit and push
-git add .
-git commit -m "Your changes"
-git push
-
-# Vercel auto-deploys on push!
-```
-
----
-
-## 🌐 Alternative Deployment Options
-
-### Netlify (Also FREE)
-1. Drag & drop the `dist` folder to netlify.com
-2. Add environment variable in dashboard
-3. Enable serverless functions
-
-### Cloudflare Pages (FREE, Unlimited Bandwidth)
-1. Connect GitHub repo
-2. Build command: `npm run build`
-3. Output: `dist`
-4. Add environment variable
-5. Note: Requires Cloudflare Workers for API proxy
-
----
-
-## 📊 Monitoring Usage
-
-### Vercel Analytics
-- Free analytics included
-- View in Vercel dashboard
-- Track page views, users
-
-### Anthropic Console
-- Monitor API usage
-- Set budget alerts
-- View costs in real-time
-- https://console.anthropic.com/usage
-
----
-
-## 🐛 Troubleshooting
-
-### "Invalid access code" on login
-- Check you changed the password in App.jsx
-- Redeploy after changing password
-- Clear browser cache
-
-### API calls failing
-- Verify ANTHROPIC_API_KEY is set in Vercel
-- Check API key is valid in Anthropic Console
-- Check Vercel function logs
-
-### App not loading
-- Check Vercel deployment logs
-- Verify build succeeded
-- Try clearing browser cache
-
----
-
-## 📞 Support
-
-For issues:
-1. Check Vercel deployment logs
-2. Check browser console (F12)
-3. Verify environment variables are set
-4. Check Anthropic API status page
-
----
-
-## 🎉 You're Done!
-
-Your app is now live, secure, and costs <$5/month for 5 users!
-
-**Your deployment checklist:**
-- [ ] Pushed code to GitHub
-- [ ] Deployed to Vercel
-- [ ] Added ANTHROPIC_API_KEY environment variable
-- [ ] Changed default password
-- [ ] Shared URL and password with users
-- [ ] Set spending limits in Anthropic Console
-
----
-
-Built with ❤️ for families
+**Made with ❤️ for families everywhere**

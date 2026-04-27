@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Sparkles, MapPin, CheckCircle, MessageCircle, Baby, Plus, Trash2, Bookmark, X, Heart, Activity, Home, Trees, Palette, Compass, ChevronDown, ChevronUp, Navigation, Loader2, Users, Brain, DollarSign, Microscope, Lock } from "lucide-react";
+import { Sparkles, MapPin, CheckCircle, MessageCircle, Baby, Plus, Trash2, Bookmark, X, Heart, Activity, Palette, ChevronDown, ChevronUp, Navigation, Loader2, Users, Brain, DollarSign, Microscope, Zap, Theater, Gamepad2, Menu, History, Lock } from "lucide-react";
 
 // ── Password Gate ──────────────────────────────────────────────
 // 🔑 Change this to your desired password
@@ -89,11 +89,36 @@ const C = {
 
 const LANGUAGES = ["English","Spanish","French","Portuguese","German","Italian","Dutch","Polish","Czech"];
 
+// NEW: Optimized Play Categories (activity types, not environments)
 const PLAY_CATS = [
-  { type:"Indoor",     icon:Home,    label:"Indoor/Home", color:"#6C47FF" },
-  { type:"Outdoor",    icon:Trees,   label:"Outdoor",     color:"#22C55E" },
-  { type:"Creative",   icon:Palette, label:"Creative",    color:"#F27D26" },
-  { type:"Trip-based", icon:Compass, label:"Trips",       color:"#F59E0B" },
+  { 
+    type:"Active", 
+    icon:Zap, 
+    label:"Active & Sports", 
+    color:"#22C55E",
+    examples:"Running, jumping, sports, chasing, hide & seek, dance parties, obstacle courses, ball games, freeze dance, relay races, outdoor games"
+  },
+  { 
+    type:"Creative", 
+    icon:Palette, 
+    label:"Creative & Arts", 
+    color:"#F27D26",
+    examples:"Painting, drawing, crafting, music, theatre, building, construction, DIY projects, collage, origami, instrument making, sculpture"
+  },
+  { 
+    type:"Pretend", 
+    icon:Theater, 
+    label:"Pretend & Story", 
+    color:"#6C47FF",
+    examples:"Role-play, dress-up, storytelling, puppet shows, make-believe, acting out scenarios, imaginative play, character games"
+  },
+  { 
+    type:"Games", 
+    icon:Gamepad2, 
+    label:"Games & Puzzles", 
+    color:"#F59E0B",
+    examples:"Board games, card games, puzzles, riddles, strategy games, brain teasers, logic challenges, detective games, mysteries"
+  },
 ];
 
 const LEARN_FOCUSES = [
@@ -108,32 +133,44 @@ const DISCARD_REASONS = ["Not age-appropriate","Already done it","Too complex","
 const DIFFICULTY_OPTS = ["Way too easy","Easy","Just right","Difficult","Very difficult"];
 const AGE_GROUPS      = a => a<=2?"toddler":a<=5?"preschool":a<=10?"primary":"tween";
 
+// NEW: Simplified navigation (2 main tabs)
 const NAV = [
   { id:"activities", Icon:Sparkles,      label:"Activities" },
-  { id:"map",        Icon:MapPin,        label:"Nearby"     },
-  { id:"done",       Icon:CheckCircle,   label:"History"    },
   { id:"community",  Icon:MessageCircle, label:"Community"  },
 ];
 
-const INSPIRATION = {
-  Indoor:`Inspire from these real ideas (don't copy verbatim): Wiggle & Freeze Dance (play music, everyone freezes when it stops), Copycat Dance (take turns leading movements), Animal Dance Adventure (move like different animals), Dance with Props (scarves/ribbons to music), Dance Charades (act emotions through dance), Detective Escape Room (puzzles/riddles to solve indoors), Secret Code Breaker (simple cipher A=1 B=2 to decode a hidden message), Observation Detective (spot what changed in a scene), Missing Snack Mystery (trail of evidence, interview suspects), indoor obstacle course with cushions/tape, sensory bins with rice or sand, homemade playdough sculpting, shadow puppet theatre with torch and sheet, indoor scavenger hunt with picture clues.`,
-  Outdoor:`Inspire from these real ideas (don't copy verbatim): Giant homemade bubbles (washing-up liquid, water, glycerine, rope wand), Nature scavenger hunt (find leaves, bugs, rocks, feathers), Mud kitchen (pots and natural materials), Backyard bug safari with magnifying glass and nature journal, Nature art mandalas from flowers and pebbles, Chalk obstacle course, Water balloon targets, Garden treasure hunt with hand-drawn map, Bird watching with homemade binoculars, Outdoor Freeze Dance, Build a den with branches and blankets, Sidewalk chalk collaborative mural, Backyard camping with stargazing, Rain puddle jumping and ripple watching.`,
-  Creative:`Inspire from these real ideas (don't copy verbatim): Freeze Dance with themed poses (superheroes, animals), Dance Relay Race (teams perform sequences), Group Dance Circle (each person adds a move), Rhythm Relay (pass a move down the line adding one more), Musical Statues, Freestyle Freeze dance, Scarf dancing to different tempos, Make-your-own instrument (rice shaker, rubber band guitar, pot drums), Collaborative mural on large floor paper, Wearable art on paper bags or old t-shirts, Sock puppet show, Origami animals, Collage from magazines, Story stones (paint images on rocks then tell stories), Tie-dye with food colouring, Nature printing (press leaves into paint and stamp).`,
-  "Trip-based":`Inspire from these real ideas (don't copy verbatim): Scavenger Hunt Sleuth (spot things in a new environment), Travel Detective (make up a mystery about the place), Nature journal journey (draw plants and landmarks), Map makers (sketch a hand-drawn map as you explore), Photo safari (list of creative shots to find), Story walk (each person adds a sentence at each new location), Junior journalist (interview locals about the place), Sensory walk (record things you see, hear, smell, touch), Postcard making on the go, Taste the world at a local market.`,
-};
-
 // ── Storage — uses localStorage (Vercel deployment) ───────────
 const defaultState = {
-  lang:"English", kids:[], savedIdeas:[], completedActivities:[],
-  communityFeedback:[], communityIdeas:[], feedbackLoop:{},
-  intent:"play", learnFocuses:[], envFilter:[],
+  lang:"English", 
+  kids:[], 
+  savedIdeas:[], 
+  completedActivities:[],
+  communityFeedback:[], 
+  communityIdeas:[], 
+  feedbackLoop:{},
+  // NEW: Persistent preferences
+  lastSelection: {
+    selectedKids: [],
+    mode: null,
+    adults: 0,
+    extraKids: 0,
+  },
+  activePlayCategory: null,      // null or 0-3 (index in PLAY_CATS)
+  activeLearnFocus: null,         // FIX #2: Changed from array to single value (null or focus id)
+  envFilter: [],                  // ["indoor"] or ["outdoor"] or both or []
 };
+
 async function loadState() {
-  try { const d = localStorage.getItem("kidsplay_v4"); return d ? JSON.parse(d) : defaultState; }
-  catch { return defaultState; }
+  try { 
+    const d = localStorage.getItem("kidsplay_v5"); 
+    return d ? JSON.parse(d) : defaultState; 
+  } catch { 
+    return defaultState; 
+  }
 }
+
 async function saveState(s) {
-  try { localStorage.setItem("kidsplay_v4", JSON.stringify(s)); } catch {}
+  try { localStorage.setItem("kidsplay_v5", JSON.stringify(s)); } catch {}
 }
 
 // ── API — calls /api/claude backend proxy (Vercel) ─────────────
@@ -216,15 +253,6 @@ function Modal({ show, onClose, title, accentColor, children }) {
     </div>
   );
 }
-function SubTabs({ tabs, active, onChange }) {
-  return (
-    <div style={{ display:"flex", background:C.white, borderRadius:24, padding:6, border:`2px solid ${C.primaryFg}`, boxShadow:"0 4px 12px rgba(26,26,46,0.04)", width:"fit-content", marginBottom:24 }}>
-      {tabs.map(t=>(
-        <button key={t} onClick={()=>onChange(t)} style={{ padding:"8px 24px", borderRadius:18, fontWeight:800, fontSize:13, border:"none", cursor:"pointer", background:active===t?C.primary:"transparent", color:active===t?"#fff":C.inkSoft, boxShadow:active===t?"0 4px 12px rgba(108,71,255,0.25)":"none", transition:"all .15s" }}>{t}</button>
-      ))}
-    </div>
-  );
-}
 function Empty({ icon:Icon, title, text }) {
   return (
     <div style={{ background:C.white, borderRadius:40, padding:48, textAlign:"center", border:`2px solid ${C.primaryFg}` }}>
@@ -247,18 +275,64 @@ function PageHeader({ title, subtitle }) {
 function Loading() {
   return (
     <div style={{ textAlign:"center", padding:40, color:C.inkSoft, fontWeight:700 }}>
-      <Loader2 size={32} style={{ color:C.primary, margin:"0 auto 12px", display:"block" }} />
+      <Loader2 size={32} style={{ color:C.primary, margin:"0 auto 12px", display:"block" }} className="animate-spin" />
       Generating ideas for your family…
     </div>
   );
 }
 
+// ── NEW: Hamburger Menu ────────────────────────────────────────
+function HamburgerMenu({ onNavigate }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    const handler = e => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const navigate = (page) => {
+    onNavigate(page);
+    setOpen(false);
+  };
+
+  return (
+    <div ref={ref} style={{ position:"relative" }}>
+      <button onClick={()=>setOpen(o=>!o)} style={{ display:"flex", alignItems:"center", gap:6, padding:"7px 12px", background:C.white, border:`2px solid ${C.primaryFg}`, borderRadius:14, fontWeight:800, fontSize:13, cursor:"pointer", color:C.ink }}>
+        <Menu size={18} style={{ color:C.primary }} />
+        <ChevronDown size={14} style={{ color:C.inkSoft, transform:open?"rotate(180deg)":"none", transition:"transform .2s" }} />
+      </button>
+
+      {open && (
+        <div style={{ position:"absolute", top:"calc(100% + 8px)", right:0, width:200, background:C.white, borderRadius:20, boxShadow:"0 16px 48px rgba(26,26,46,0.16)", border:`1.5px solid ${C.primaryFg}`, zIndex:3000, overflow:"hidden" }}>
+          <button onClick={()=>navigate('nearby')} style={{ width:"100%", display:"flex", alignItems:"center", gap:10, padding:"14px 18px", border:"none", background:"transparent", cursor:"pointer", borderBottom:`1px solid ${C.primaryFg}`, textAlign:"left", fontWeight:700, fontSize:14, color:C.ink, transition:"background .15s" }} onMouseEnter={e=>e.target.style.background=C.bgSoft} onMouseLeave={e=>e.target.style.background="transparent"}>
+            <MapPin size={18} style={{ color:C.accent }} /> Nearby Places
+          </button>
+          <button onClick={()=>navigate('history')} style={{ width:"100%", display:"flex", alignItems:"center", gap:10, padding:"14px 18px", border:"none", background:"transparent", cursor:"pointer", textAlign:"left", fontWeight:700, fontSize:14, color:C.ink, transition:"background .15s" }} onMouseEnter={e=>e.target.style.background=C.bgSoft} onMouseLeave={e=>e.target.style.background="transparent"}>
+            <History size={18} style={{ color:C.success }} /> Our Journey
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Children Dropdown ──────────────────────────────────────────
-function ChildrenDropdown({ state, update }) {
+const ChildrenDropdown = ({ state, update, triggerAddRef }) => {
   const [open, setOpen] = useState(false);
   const [adding, setAdding] = useState(false);
   const [form, setForm] = useState({ name:"", age:"5", gender:"Boy" });
   const ref = useRef(null);
+
+  useEffect(() => {
+    if (triggerAddRef) {
+      triggerAddRef.current = () => {
+        setOpen(true);
+        setAdding(true);
+      };
+    }
+  }, [triggerAddRef]);
 
   useEffect(() => {
     const handler = e => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
@@ -268,8 +342,23 @@ function ChildrenDropdown({ state, update }) {
 
   const addKid = () => {
     if (!form.name||!form.age) return;
-    update({ kids:[...state.kids,{...form,id:Date.now(),age:parseInt(form.age)}] });
-    setForm({ name:"",age:"5",gender:"Boy" }); setAdding(false);
+    const newKid = {...form, id:Date.now(), age:parseInt(form.age)};
+    update({ kids:[...state.kids, newKid] });
+    
+    if (state.kids.length === 0) {
+      update({ 
+        lastSelection: {
+          selectedKids: [newKid.id],
+          mode: "👤 Individual",
+          adults: 0,
+          extraKids: 0,
+        }
+      });
+    }
+    
+    setForm({ name:"",age:"5",gender:"Boy" }); 
+    setAdding(false);
+    setOpen(false);
   };
 
   return (
@@ -323,69 +412,234 @@ function ChildrenDropdown({ state, update }) {
           </div>
         </div>
       )}
-      <Modal show={false} onClose={()=>{}} title="" accentColor={C.primary}><div/></Modal>
     </div>
   );
-}
+};
 
-// ── Intent Selector (Play / Learn toggle) ──────────────────────
-function IntentSelector({ intent, onChange }) {
+// ── NEW: Onboarding Card for First-Time Users ─────────────────
+function OnboardingCard({ onAddChild }) {
   return (
-    <div style={{ background:C.white, borderRadius:24, padding:6, border:`2px solid ${C.primaryFg}`, boxShadow:"0 4px 12px rgba(26,26,46,0.04)", display:"inline-flex", gap:4, marginBottom:20 }}>
-      {[["play", Palette, "Play"], ["learn", Brain, "Learn"]].map(([val, Icon, lbl])=>(
-        <button key={val} onClick={()=>onChange(val)} style={{ display:"flex", alignItems:"center", gap:8, padding:"12px 28px", borderRadius:20, background:intent===val?C.primary:"transparent", color:intent===val?"#fff":C.inkSoft, border:"none", cursor:"pointer", fontWeight:800, fontSize:15, textTransform:"uppercase", letterSpacing:"0.06em", boxShadow:intent===val?`0 8px 24px ${C.primary}40`:"none", transition:"all .15s" }}>
-          <Icon size={20} fill={intent===val?"currentColor":"none"} /> {lbl}
-        </button>
-      ))}
+    <div style={{ ...cardSt, textAlign:"center", marginTop:40 }}>
+      <div style={{ fontSize:64, marginBottom:16 }}>👨‍👩‍👧‍👦</div>
+      <h2 style={{ fontWeight:900, fontSize:32, color:C.ink, marginBottom:12 }}>Welcome to Kindred!</h2>
+      <p style={{ fontSize:16, color:C.inkMid, lineHeight:1.7, marginBottom:24, maxWidth:400, margin:"0 auto 24px" }}>
+        Let's start by adding your children to get personalized activities tailored just for them.
+      </p>
+      <button onClick={onAddChild} style={{ padding:"16px 32px", background:C.primary, color:"#fff", borderRadius:20, fontWeight:800, fontSize:16, border:"none", cursor:"pointer", display:"inline-flex", alignItems:"center", gap:10, boxShadow:`0 8px 24px ${C.primary}40` }}>
+        <Plus size={20} /> Add Your First Child
+      </button>
     </div>
   );
 }
 
-// ── Learning Focus Cards (multi-select) ────────────────────────
-function FocusSelector({ selected, onChange }) {
-  const toggle = id => onChange(selected.includes(id) ? selected.filter(f=>f!==id) : [...selected, id]);
+// ── Environment Filter Chips ───────────────────────────────────
+function EnvFilterChips({ envFilter, onChange }) {
+  const select = val => {
+    if (val === "none") {
+      onChange([]);
+    } else {
+      onChange([val]);
+    }
+  };
+  
+  const isNone = envFilter.length === 0;
+  
   return (
     <div style={{ marginBottom:20 }}>
-      <p style={{ fontSize:14, fontWeight:700, color:C.inkMid, marginBottom:14 }}>What do you want to explore today?</p>
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(2,1fr)", gap:12 }}>
-        {LEARN_FOCUSES.map(focus=>{
-          const active = selected.includes(focus.id);
-          return (
-            <button key={focus.id} onClick={()=>toggle(focus.id)} style={{ background:active?focus.color:C.white, border:`3px solid ${active?focus.color:C.primaryFg}`, borderRadius:24, padding:20, cursor:"pointer", textAlign:"left", transition:"all .15s", transform:active?"scale(1.02)":"scale(1)", boxShadow:active?`0 8px 24px ${focus.color}40`:"none" }}>
-              <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", marginBottom:8 }}>
-                <div style={{ fontSize:30 }}>{focus.emoji}</div>
-                {active && <CheckCircle size={22} style={{ color:"#fff" }} fill="currentColor" />}
-              </div>
-              <div style={{ fontWeight:800, fontSize:15, color:active?"#fff":C.ink, marginBottom:3 }}>{focus.label}</div>
-              <div style={{ fontSize:11, fontWeight:600, color:active?"rgba(255,255,255,0.8)":C.inkSoft }}>{focus.subtitle}</div>
-            </button>
-          );
-        })}
+      <p style={{ fontSize:12, fontWeight:800, textTransform:"uppercase", letterSpacing:"0.08em", color:C.inkSoft, marginBottom:8 }}>Environment (optional)</p>
+      <div style={{ display:"flex", gap:8 }}>
+        <button onClick={()=>select("none")} style={pillSt(isNone, C.inkMid, "#fff")}>
+          ✨ No Preference
+        </button>
+        <button onClick={()=>select("indoor")} style={pillSt(envFilter.includes("indoor"), C.primary, "#fff")}>
+          🏠 Indoor
+        </button>
+        <button onClick={()=>select("outdoor")} style={pillSt(envFilter.includes("outdoor"), C.success, "#fff")}>
+          🌳 Outdoor
+        </button>
       </div>
     </div>
   );
 }
 
-// ── Environment filter ─────────────────────────────────────────
-function FilterChipBar({ envFilter, onEnvChange }) {
-  const toggle = val => onEnvChange(envFilter.includes(val) ? envFilter.filter(f=>f!==val) : [...envFilter, val]);
+// ── NEW: Unified Activity Type Selector ────────────────────────
+function ActivityTypeSelector({ state, update }) {
+  const selectPlay = (index) => {
+    update({ 
+      activePlayCategory: index,
+      activeLearnFocus: null,
+    });
+  };
+
+  const selectLearn = (focusId) => {
+    const current = state.activeLearnFocus;
+    const newValue = current === focusId ? null : focusId;
+    
+    update({ 
+      activeLearnFocus: newValue,
+      activePlayCategory: newValue !== null ? null : state.activePlayCategory,
+    });
+  };
+
   return (
-    <div style={{ display:"flex", gap:8, marginBottom:20 }}>
-      <button onClick={()=>toggle("indoor")}  style={pillSt(envFilter.includes("indoor"),  C.primary, "#fff")}>🏠 Indoor</button>
-      <button onClick={()=>toggle("outdoor")} style={pillSt(envFilter.includes("outdoor"), C.success, "#fff")}>🌳 Outdoor</button>
+    <div style={{ marginBottom:24 }}>
+      {/* Play Activities */}
+      <div style={{ marginBottom:20 }}>
+        <p style={{ fontSize:13, fontWeight:800, color:C.inkMid, marginBottom:10, display:"flex", alignItems:"center", gap:6 }}>
+          🎮 <span>Play Activities</span>
+          <span style={{ fontSize:11, fontWeight:600, color:C.inkSoft }}>(choose one)</span>
+        </p>
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:12 }}>
+          {PLAY_CATS.map((cat, i) => {
+            const active = state.activePlayCategory === i;
+            return (
+              <button 
+                key={cat.type} 
+                onClick={() => selectPlay(i)} 
+                style={{ 
+                  padding:"20px 12px", 
+                  borderRadius:24, 
+                  border:`3px solid ${active ? cat.color : C.primaryFg}`, 
+                  background:C.white, 
+                  cursor:"pointer", 
+                  display:"flex", 
+                  flexDirection:"column", 
+                  alignItems:"center", 
+                  gap:8, 
+                  transform:active ? "scale(1.04)" : "scale(1)", 
+                  transition:"all .15s", 
+                  boxShadow:active ? `0 8px 24px ${cat.color}25` : "none" 
+                }}
+              >
+                <div style={{ 
+                  width:46, 
+                  height:46, 
+                  borderRadius:14, 
+                  background:active ? cat.color : C.bgSoft, 
+                  display:"flex", 
+                  alignItems:"center", 
+                  justifyContent:"center" 
+                }}>
+                  <cat.icon size={24} style={{ color:active ? "#fff" : C.inkFaint }} />
+                </div>
+                <span style={{ 
+                  fontSize:11, 
+                  fontWeight:800, 
+                  color:active ? cat.color : C.inkSoft, 
+                  textAlign:"center",
+                  lineHeight:1.3
+                }}>
+                  {cat.label}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Learning Focuses */}
+      <div>
+        <p style={{ fontSize:13, fontWeight:800, color:C.inkMid, marginBottom:10, display:"flex", alignItems:"center", gap:6 }}>
+          🧠 <span>Learning Focuses</span>
+          <span style={{ fontSize:11, fontWeight:600, color:C.inkSoft }}>(choose one)</span>
+        </p>
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:12 }}>
+          {LEARN_FOCUSES.map(focus => {
+            const active = state.activeLearnFocus === focus.id;
+            return (
+              <button 
+                key={focus.id} 
+                onClick={() => selectLearn(focus.id)} 
+                style={{ 
+                  padding:"20px 12px", 
+                  borderRadius:24, 
+                  border:`3px solid ${active ? focus.color : C.primaryFg}`, 
+                  background:C.white, 
+                  cursor:"pointer", 
+                  display:"flex", 
+                  flexDirection:"column", 
+                  alignItems:"center", 
+                  gap:8, 
+                  transform:active ? "scale(1.04)" : "scale(1)", 
+                  transition:"all .15s", 
+                  boxShadow:active ? `0 8px 24px ${focus.color}25` : "none" 
+                }}
+              >
+                <div style={{ 
+                  width:46, 
+                  height:46, 
+                  borderRadius:14, 
+                  background:active ? focus.color : C.bgSoft, 
+                  display:"flex", 
+                  alignItems:"center", 
+                  justifyContent:"center",
+                  position:"relative"
+                }}>
+                  <focus.icon size={24} style={{ color:active ? "#fff" : C.inkFaint }} />
+                  {active && (
+                    <div style={{ 
+                      position:"absolute", 
+                      top:-4, 
+                      right:-4, 
+                      background:"#fff", 
+                      borderRadius:"50%", 
+                      padding:2,
+                      boxShadow:"0 2px 8px rgba(0,0,0,0.15)"
+                    }}>
+                      <CheckCircle size={16} style={{ color:focus.color }} fill="currentColor" />
+                    </div>
+                  )}
+                </div>
+                
+                <span style={{ 
+                  fontSize:11, 
+                  fontWeight:800, 
+                  color:active ? focus.color : C.inkSoft, 
+                  textAlign:"center",
+                  lineHeight:1.3
+                }}>
+                  {focus.label}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 }
 
-// ── Who's Joining Bar ──────────────────────────────────────────
-function JoiningBar({ state, onGenerate, genLabel, accentColor }) {
+// ── NEW: Enhanced Who's Joining Bar (without Generate button) ─────────
+function JoiningBar({ state, update, accentColor }) {
   const [selKids, setSelKids] = useState([]);
   const [mode, setMode] = useState(null);
   const [adults, setAdults] = useState(0);
   const [extra, setExtra] = useState(0);
-  const toggle = id => setSelKids(p=>p.includes(id)?p.filter(x=>x!==id):[...p,id]);
-  const ready = selKids.length>0 && mode;
-  const fg = accentColor||C.primary;
+
+  useEffect(() => {
+    if (state.lastSelection) {
+      setSelKids(state.lastSelection.selectedKids || []);
+      setMode(state.lastSelection.mode);
+      setAdults(state.lastSelection.adults || 0);
+      setExtra(state.lastSelection.extraKids || 0);
+    }
+  }, [state.lastSelection]);
+
+  useEffect(() => {
+    if (selKids.length > 0 && mode) {
+      update({
+        lastSelection: {
+          selectedKids: selKids,
+          mode: mode,
+          adults: adults,
+          extraKids: extra,
+        }
+      });
+    }
+  }, [selKids, mode, adults, extra, update]);
+
+  const toggle = id => setSelKids(p => p.includes(id) ? p.filter(x=>x!==id) : [...p,id]);
+  const fg = accentColor || C.primary;
   const isGroup = mode && mode.includes("Group");
 
   const Stepper = ({ val, setVal, lbl }) => (
@@ -401,7 +655,7 @@ function JoiningBar({ state, onGenerate, genLabel, accentColor }) {
 
   return (
     <div style={{ background:C.white, borderRadius:24, border:`2px solid ${C.primaryFg}`, padding:"14px 18px", marginBottom:20, boxShadow:"0 4px 16px rgba(26,26,46,0.05)" }}>
-      {state.kids.length===0
+      {state.kids.length === 0
         ? <p style={{ color:C.inkSoft, fontSize:13, margin:0 }}>Add children via the Children menu in the top-right corner.</p>
         : <>
           <div style={{ display:"flex", flexWrap:"wrap", gap:6, alignItems:"center", marginBottom:10 }}>
@@ -416,15 +670,15 @@ function JoiningBar({ state, onGenerate, genLabel, accentColor }) {
             {["👤 Individual","👨‍👩‍👧 Group"].map(m=>(
               <button key={m} onClick={()=>setMode(m)} style={{ ...pillSt(mode===m,fg,"#fff"), padding:"6px 14px", fontSize:12 }}>{m}</button>
             ))}
-            {isGroup && <>
-              <Stepper val={adults} setVal={setAdults} lbl="Adults" />
-              <Stepper val={extra}  setVal={setExtra}  lbl="Extra kids" />
-            </>}
-            <div style={{ marginLeft:"auto" }}>
-              <button onClick={()=>onGenerate({selKids,mode,adults:isGroup?adults:0,extraKids:isGroup?extra:0})} disabled={!ready} style={{ display:"flex", alignItems:"center", gap:6, padding:"9px 20px", background:ready?fg:C.inkFaint, color:"#fff", border:"none", borderRadius:16, fontWeight:800, fontSize:13, cursor:ready?"pointer":"not-allowed", opacity:ready?1:0.45, boxShadow:ready?`0 4px 16px ${fg}40`:"none", transition:"all .15s", whiteSpace:"nowrap" }}>
-                <Sparkles size={15} fill="currentColor" /> {genLabel||"Generate"}
-              </button>
-            </div>
+            {isGroup && (
+              <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap" }}>
+                <span style={{ fontSize:11, fontWeight:800, color:C.inkSoft, display:"flex", alignItems:"center", gap:4 }}>
+                  <Plus size={12} /> Optionally add:
+                </span>
+                <Stepper val={adults} setVal={setAdults} lbl="Adults" />
+                <Stepper val={extra}  setVal={setExtra}  lbl="Extra kids" />
+              </div>
+            )}
           </div>
         </>
       }
@@ -432,7 +686,61 @@ function JoiningBar({ state, onGenerate, genLabel, accentColor }) {
   );
 }
 
-// ── Idea Card ──────────────────────────────────────────────────
+// Enhanced Sticky Generate Button
+function StickyGenerateButton({ onGenerate, genLabel, disabled }) {
+  return (
+    <div style={{ 
+      position:"sticky", 
+      bottom:100, 
+      zIndex:1500, 
+      display:"flex", 
+      justifyContent:"center",
+      pointerEvents:"none",
+      marginTop:20,
+      padding:"0 16px"
+    }}>
+      <div style={{
+        pointerEvents:"auto",
+        background:"rgba(255,255,255,0.7)",
+        backdropFilter:"blur(12px)",
+        borderRadius:36,
+        padding:"6px",
+        boxShadow:"0 16px 48px rgba(26,26,46,0.2), 0 0 0 1px rgba(255,255,255,0.8)",
+        border:"3px solid rgba(255,255,255,0.9)"
+      }}>
+        <button 
+          onClick={onGenerate} 
+          disabled={disabled}
+          style={{ 
+            display:"flex", 
+            alignItems:"center", 
+            gap:10, 
+            padding:"14px 36px", 
+            background:disabled ? C.inkFaint : C.primary,
+            color:"#fff", 
+            border:"none", 
+            borderRadius:30, 
+            fontWeight:900, 
+            fontSize:16, 
+            cursor:disabled ? "not-allowed" : "pointer", 
+            opacity:disabled ? 0.5 : 1, 
+            boxShadow:disabled ? "none" : `0 8px 32px ${C.primary}60, inset 0 1px 0 rgba(255,255,255,0.2)`, 
+            transition:"all .2s",
+            transform:disabled ? "scale(1)" : "scale(1)",
+            letterSpacing:"0.02em"
+          }}
+          onMouseEnter={e => !disabled && (e.target.style.transform = "scale(1.05)")}
+          onMouseLeave={e => !disabled && (e.target.style.transform = "scale(1)")}
+        >
+          <Sparkles size={22} fill="currentColor" style={{ filter:"drop-shadow(0 2px 4px rgba(0,0,0,0.2))" }} /> 
+          <span>{genLabel || "Generate"}</span>
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── Idea Card ───────────────
 function IdeaCard({ idea, onDiscard, onSave, onComplete, isSaved, accentColor, isLearning }) {
   const [phase, setPhase] = useState("idle");
   const [discardReason, setDiscardReason] = useState("");
@@ -441,7 +749,8 @@ function IdeaCard({ idea, onDiscard, onSave, onComplete, isSaved, accentColor, i
   const [expanded, setExpanded] = useState(false);
   const fg = accentColor||C.primary;
   const mats = Array.isArray(idea.materials) ? idea.materials : (typeof idea.materials==="string"&&idea.materials ? [idea.materials] : []);
-  const focusTags = isLearning && Array.isArray(idea.focuses) ? idea.focuses : [];
+  
+  const focusTags = isLearning && idea.focuses ? (Array.isArray(idea.focuses) ? idea.focuses : [idea.focuses]) : [];
 
   return (
     <div style={{ ...cardSt, marginBottom:20 }}>
@@ -560,60 +869,97 @@ function useIdeas(state, update) {
   return { ideas, loading, generate, onDiscard, onSave, onComplete };
 }
 
-// ── Unified Activities Section ─────────────────────────────────
+// ── NEW: Unified Activities Section ────────────────────────────
 function ActivitiesSection({ state, update }) {
   const { ideas, loading, generate, onDiscard, onSave, onComplete } = useIdeas(state, update);
-  const [catIdx, setCatIdx] = useState(0);
-  const cat = PLAY_CATS[catIdx];
   const envHint = (state.envFilter||[]).length>0 ? ` Preferred setting: ${state.envFilter.join(" or ")}.` : "";
 
-  const doGeneratePlay = ({ selKids, mode, adults, extraKids }) => {
-    const kids = state.kids.filter(k=>selKids.includes(k.id));
-    const kd = kids.map(k=>`${k.name} (${k.age}yo, ${k.gender}, ${AGE_GROUPS(k.age)})`).join(", ");
-    generate(`${INSPIRATION[cat.type]||""}\n\nGenerate 4 specific, hands-on ${cat.type} free play activities for: ${kd}. Mode: ${mode}. Adults: ${adults}. Extra kids: ${extraKids}.${envHint} Return JSON array: [{id,title,description,whySuitable,develops,effortLevel(1-4),category:"${cat.type}",materials:[]}]. materials must be a JSON array.`);
+  const doGenerate = () => {
+    const { selectedKids, mode, adults, extraKids } = state.lastSelection || {};
+    if (!selectedKids || selectedKids.length === 0 || !mode) return;
+    
+    const kids = state.kids.filter(k=>selectedKids.includes(k));
+    const kidsDesc = kids.map(k=>`${k.name} (${k.age}yo, ${k.gender}, ${AGE_GROUPS(k.age)})`).join(", ");
+    const isGroup = mode && mode.includes("Group");
+    
+    if (state.activePlayCategory !== null) {
+      const cat = PLAY_CATS[state.activePlayCategory];
+      const prompt = `Inspiration: ${cat.examples}\n\nGenerate 4 specific, hands-on ${cat.label} activities for: ${kidsDesc}. Mode: ${mode}. Adults: ${isGroup ? adults : 0}. Extra kids: ${isGroup ? extraKids : 0}.${envHint} Return JSON array: [{id,title,description,whySuitable,develops,effortLevel(1-4),category:"${cat.type}",materials:[]}]. Materials must be a JSON array.`;
+      generate(prompt);
+      return;
+    }
+    
+    if (state.activeLearnFocus) {
+      const focus = LEARN_FOCUSES.find(f => f.id === state.activeLearnFocus);
+      if (!focus) return;
+      
+      const prompt = `Generate 4 experiential learning activities focused on: ${focus.label} for: ${kidsDesc}. Mode: ${mode}. Adults: ${isGroup ? adults : 0}. Extra kids: ${isGroup ? extraKids : 0}.${envHint} Homeschool/worldschool hands-on style. Return JSON: [{id,title,description,whySuitable,develops,effortLevel(1-4),focuses:"${state.activeLearnFocus}",learningOutcomes:["outcome1","outcome2","outcome3"],materials:[]}]. All arrays must be JSON arrays.`;
+      generate(prompt);
+      return;
+    }
   };
 
-  const doGenerateLearn = ({ selKids, mode, adults, extraKids }) => {
-    if (!(state.learnFocuses||[]).length) return;
-    const kids = state.kids.filter(k=>selKids.includes(k.id));
-    const kd = kids.map(k=>`${k.name} (${k.age}yo, ${k.gender}, ${AGE_GROUPS(k.age)})`).join(", ");
-    const focuses = state.learnFocuses.join(", ");
-    generate(`Generate 4 experiential learning activities focused on: ${focuses} for: ${kd}. Mode: ${mode}. Adults: ${adults}. Extra kids: ${extraKids}.${envHint} Homeschool/worldschool hands-on style. Return JSON: [{id,title,description,whySuitable,develops,effortLevel(1-4),focuses:${JSON.stringify(state.learnFocuses)},learningOutcomes:["outcome1","outcome2","outcome3"],materials:[]}]. All arrays must be JSON arrays.`);
+  const getGenerateLabel = () => {
+    if (state.activePlayCategory !== null) {
+      return `Generate ${PLAY_CATS[state.activePlayCategory].label}`;
+    }
+    if (state.activeLearnFocus) {
+      const focus = LEARN_FOCUSES.find(f => f.id === state.activeLearnFocus);
+      return focus ? `Generate ${focus.label}` : "Generate Learning";
+    }
+    return "Select Activity Type";
   };
+
+  const getAccentColor = () => {
+    if (state.activePlayCategory !== null) {
+      return PLAY_CATS[state.activePlayCategory].color;
+    }
+    if (state.activeLearnFocus) {
+      const focus = LEARN_FOCUSES.find(f => f.id === state.activeLearnFocus);
+      return focus ? focus.color : C.primary;
+    }
+    return C.primary;
+  };
+
+  const canGenerate = (state.activePlayCategory !== null || state.activeLearnFocus) && 
+                      state.lastSelection?.selectedKids?.length > 0 && 
+                      state.lastSelection?.mode;
+  const isLearning = !!state.activeLearnFocus;
 
   return (
     <div>
       <PageHeader title="Discover & Learn" subtitle="Activities designed for your family's growth" />
-      <IntentSelector intent={state.intent||"play"} onChange={val=>update({intent:val})} />
-      <FilterChipBar envFilter={state.envFilter||[]} onEnvChange={val=>update({envFilter:val})} />
+      
+      <JoiningBar 
+        state={state} 
+        update={update}
+        accentColor={getAccentColor()} 
+      />
 
-      {(state.intent||"play")==="play" && <>
-        <JoiningBar state={state} onGenerate={doGeneratePlay} genLabel={`Generate ${cat.label}`} accentColor={cat.color} />
-        <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:12, marginBottom:20 }}>
-          {PLAY_CATS.map((c,i)=>(
-            <button key={c.type} onClick={()=>setCatIdx(i)} style={{ padding:"20px 8px", borderRadius:24, border:`3px solid ${catIdx===i?c.color:C.primaryFg}`, background:C.white, cursor:"pointer", display:"flex", flexDirection:"column", alignItems:"center", gap:8, transform:catIdx===i?"scale(1.04)":"scale(1)", transition:"all .15s", boxShadow:catIdx===i?`0 8px 24px ${c.color}25`:"none" }}>
-              <div style={{ width:46, height:46, borderRadius:14, background:catIdx===i?c.color:C.bgSoft, display:"flex", alignItems:"center", justifyContent:"center" }}>
-                <c.icon size={24} style={{ color:catIdx===i?"#fff":C.inkFaint }} />
-              </div>
-              <span style={{ fontSize:11, fontWeight:800, color:catIdx===i?c.color:C.inkSoft, textAlign:"center" }}>{c.label}</span>
-            </button>
-          ))}
+      <ActivityTypeSelector state={state} update={update} />
+      
+      <EnvFilterChips envFilter={state.envFilter||[]} onChange={val=>update({envFilter:val})} />
+
+      <StickyGenerateButton 
+        onGenerate={doGenerate}
+        genLabel={getGenerateLabel()}
+        disabled={!canGenerate}
+      />
+
+      {!canGenerate && !loading && ideas.length === 0 && (
+        <div style={{ ...cardSt, textAlign:"center", padding:40 }}>
+          <Sparkles size={48} style={{ color:C.inkFaint, margin:"0 auto 16px" }} />
+          <p style={{ fontSize:16, color:C.inkMid, fontWeight:600 }}>
+            {!(state.activePlayCategory !== null || state.activeLearnFocus) 
+              ? "Select a Play category or Learning focus above, then click Generate"
+              : "Select children and mode above, then click Generate"
+            }
+          </p>
         </div>
-        {loading && <Loading />}
-        {ideas.map(idea=><IdeaCard key={idea.id} idea={idea} onDiscard={onDiscard} onSave={onSave} onComplete={onComplete} isSaved={!!state.savedIdeas.find(s=>s.id===idea.id)} accentColor={cat.color} isLearning={false} />)}
-      </>}
+      )}
 
-      {state.intent==="learn" && <>
-        <FocusSelector selected={state.learnFocuses||[]} onChange={val=>update({learnFocuses:val})} />
-        {(state.learnFocuses||[]).length>0
-          ? <>
-              <JoiningBar state={state} onGenerate={doGenerateLearn} genLabel="Generate Activities" accentColor={C.primary} />
-              {loading && <Loading />}
-              {ideas.map(idea=><IdeaCard key={idea.id} idea={idea} onDiscard={onDiscard} onSave={onSave} onComplete={onComplete} isSaved={!!state.savedIdeas.find(s=>s.id===idea.id)} accentColor={C.primary} isLearning={true} />)}
-            </>
-          : <Empty icon={Brain} title="Select a Learning Focus" text="Choose one or more areas above to generate personalised learning activities." />
-        }
-      </>}
+      {loading && <Loading />}
+      {ideas.map(idea=><IdeaCard key={idea.id} idea={idea} onDiscard={onDiscard} onSave={onSave} onComplete={onComplete} isSaved={!!state.savedIdeas.find(s=>s.id===idea.id)} accentColor={getAccentColor()} isLearning={isLearning} />)}
     </div>
   );
 }
@@ -737,6 +1083,14 @@ function CommunitySection({ state, update }) {
   const vote = (id,v) => update({communityIdeas:state.communityIdeas.map(i=>i.id===id?{...i,votes:(i.votes||0)+v}:i)});
   const submitFb = () => { update({communityFeedback:[...state.communityFeedback,{ideaId:fbTarget,relevance:fbRel,suitability:fbSuit,wouldTry:fbTry,comment:fbComment,ts:Date.now()}]}); setFbTarget(null); setFbComment(""); };
 
+  const SubTabs = ({ tabs, active, onChange }) => (
+    <div style={{ display:"flex", background:C.white, borderRadius:24, padding:6, border:`2px solid ${C.primaryFg}`, boxShadow:"0 4px 12px rgba(26,26,46,0.04)", width:"fit-content", marginBottom:24 }}>
+      {tabs.map(t=>(
+        <button key={t} onClick={()=>onChange(t)} style={{ padding:"8px 24px", borderRadius:18, fontWeight:800, fontSize:13, border:"none", cursor:"pointer", background:active===t?C.primary:"transparent", color:active===t?"#fff":C.inkSoft, boxShadow:active===t?"0 4px 12px rgba(108,71,255,0.25)":"none", transition:"all .15s" }}>{t}</button>
+      ))}
+    </div>
+  );
+
   return (
     <div>
       <PageHeader title="Community" subtitle="Share ideas, rate suggestions and help all families." />
@@ -808,11 +1162,31 @@ function CommunitySection({ state, update }) {
 export default function App() {
   const [state, update] = useAppState();
   const [section, setSection] = useState(0);
-  const [unlocked, setUnlocked] = useState(
-    () => sessionStorage.getItem("kidsplay_auth") === "1"
-  );
+  const [page, setPage] = useState("activities");
+  const triggerAddChildRef = useRef(null);
+  const [authenticated, setAuthenticated] = useState(false);
 
-  if (!unlocked) return <PasswordGate onUnlock={() => setUnlocked(true)} />;
+  // Check authentication on mount
+  useEffect(() => {
+    const isAuth = sessionStorage.getItem("kidsplay_auth") === "1";
+    setAuthenticated(isAuth);
+  }, []);
+
+  // Show password gate if not authenticated
+  if (!authenticated) {
+    return <PasswordGate onUnlock={() => setAuthenticated(true)} />;
+  }
+
+  const handleNavigate = (newPage) => {
+    if (newPage === 'nearby') setPage('nearby');
+    if (newPage === 'history') setPage('history');
+  };
+
+  const handleAddFirstChild = () => {
+    if (triggerAddChildRef.current) {
+      triggerAddChildRef.current();
+    }
+  };
 
   if (!state) return (
     <div style={{ display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", height:"100vh", background:C.bgSoft, gap:16 }}>
@@ -836,7 +1210,8 @@ export default function App() {
           </div>
         </div>
         <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-          <ChildrenDropdown state={state} update={update} />
+          <HamburgerMenu onNavigate={handleNavigate} />
+          <ChildrenDropdown state={state} update={update} triggerAddRef={triggerAddChildRef} />
           <select value={state.lang} onChange={e=>update({lang:e.target.value})} style={{ borderRadius:14, border:`2px solid ${C.primaryFg}`, padding:"7px 12px", fontWeight:700, fontSize:12, background:C.white, color:C.ink, cursor:"pointer", outline:"none" }}>
             {LANGUAGES.map(l=><option key={l}>{l}</option>)}
           </select>
@@ -844,15 +1219,44 @@ export default function App() {
       </header>
 
       <main style={{ maxWidth:720, margin:"0 auto", padding:"20px 16px 120px" }}>
-        {section===0 && <ActivitiesSection state={state} update={update} />}
-        {section===1 && <MapSection state={state} />}
-        {section===2 && <HistorySection state={state} />}
-        {section===3 && <CommunitySection state={state} update={update} />}
+        {state.kids.length === 0 && page === "activities" && (
+          <OnboardingCard onAddChild={handleAddFirstChild} />
+        )}
+        
+        {state.kids.length > 0 && (
+          <>
+            {page === "activities" && section === 0 && <ActivitiesSection state={state} update={update} />}
+            {page === "community" && section === 1 && <CommunitySection state={state} update={update} />}
+            {page === "nearby" && <MapSection state={state} />}
+            {page === "history" && <HistorySection state={state} />}
+          </>
+        )}
+        
+        {state.kids.length === 0 && page === "community" && <CommunitySection state={state} update={update} />}
       </main>
 
       <nav style={{ position:"fixed", bottom:24, left:"50%", transform:"translateX(-50%)", background:"rgba(26,26,46,0.92)", backdropFilter:"blur(12px)", borderRadius:32, padding:"10px 14px", display:"flex", alignItems:"center", gap:6, boxShadow:"0 8px 32px rgba(26,26,46,0.25)", zIndex:2000, border:"2px solid rgba(255,255,255,0.08)" }}>
         {NAV.map((item,i)=>(
-          <button key={item.id} onClick={()=>setSection(i)} style={{ display:"flex", alignItems:"center", gap:section===i?8:0, padding:section===i?"10px 18px":"10px 12px", borderRadius:22, background:section===i?C.primary:"transparent", border:"none", cursor:"pointer", color:section===i?"#fff":"rgba(255,255,255,0.45)", fontWeight:800, fontSize:13, transition:"all .2s", boxShadow:section===i?`0 4px 16px ${C.primary}50`:"none", whiteSpace:"nowrap" }}>
+          <button 
+            key={item.id} 
+            onClick={()=>{ setSection(i); setPage(item.id); }} 
+            style={{ 
+              display:"flex", 
+              alignItems:"center", 
+              gap:section===i?8:0, 
+              padding:section===i?"10px 18px":"10px 12px", 
+              borderRadius:22, 
+              background:section===i?C.primary:"transparent", 
+              border:"none", 
+              cursor:"pointer", 
+              color:section===i?"#fff":"rgba(255,255,255,0.45)", 
+              fontWeight:800, 
+              fontSize:13, 
+              transition:"all .2s", 
+              boxShadow:section===i?`0 4px 16px ${C.primary}50`:"none", 
+              whiteSpace:"nowrap" 
+            }}
+          >
             <item.Icon size={22} fill={section===i?"currentColor":"none"} />
             {section===i && <span style={{ textTransform:"uppercase", fontSize:11, letterSpacing:"0.06em" }}>{item.label}</span>}
           </button>
